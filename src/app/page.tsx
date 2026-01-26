@@ -109,22 +109,17 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Demo Video Placeholder */}
+            {/* Demo Video */}
             <div className="relative">
-              <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg cursor-pointer hover:scale-105 transition-transform">
-                    <svg className="w-8 h-8 text-sky-500 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </div>
-                  <p className="mt-4 text-slate-500 font-medium">Watch Demo Video</p>
-                </div>
-                {/* Decorative elements */}
-                <div className="absolute top-4 left-4 flex gap-2">
-                  <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                  <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                  <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <div className="rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+                <div style={{ padding: "56.25% 0 0 0", position: "relative" }}>
+                  <iframe
+                    src="https://player.vimeo.com/video/1158560590?badge=0&autopause=0&player_id=0&app_id=58479&byline=0&portrait=0&title=0"
+                    frameBorder="0"
+                    allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+                    title="DentalHold Demo"
+                  ></iframe>
                 </div>
               </div>
               {/* Floating accent */}
