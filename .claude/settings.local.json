@@ -8,7 +8,10 @@
       "Bash(npx prisma db push)",
       "Bash(npx prisma generate:*)",
       "Bash(npm uninstall:*)",
-      "Bash(del \"C:\\\\Users\\\\uSssal\\\\DentalHold\\\\prisma\\\\dev.db\")"
+      "Bash(del \"C:\\\\Users\\\\uSssal\\\\DentalHold\\\\prisma\\\\dev.db\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
     ]
   }
 }
