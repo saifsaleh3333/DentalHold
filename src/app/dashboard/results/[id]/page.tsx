@@ -7,23 +7,68 @@ import Link from "next/link";
 interface Benefits {
   eligible?: boolean;
   effectiveDate?: string;
+  inNetwork?: boolean;
   planType?: string;
-  benefitYear?: string;
+  feeSchedule?: string;
+  planGroupName?: string;
+  groupNumber?: string;
+  payorId?: string;
   annualMaximum?: number;
+  maximumUsed?: number;
   remainingMaximum?: number;
+  maximumAppliesTo?: string;
   deductible?: number;
-  deductibleMet?: number;
+  deductibleMet?: boolean | number;
+  deductibleAmountMet?: number;
+  deductibleAppliesTo?: string;
+  orthoMaximum?: number;
+  orthoMaximumUsed?: number;
   coverage?: {
+    diagnostic?: number;
     preventive?: number;
     basic?: number;
     major?: number;
+    extractions?: number;
+    endodontics?: number;
+    periodontics?: number;
   };
   frequencies?: {
     prophy?: string;
     bwx?: string;
     pano?: string;
+    fmx?: string;
+    exams?: string;
+    srp?: string;
+    d4910?: string;
+    d4346?: string;
+    crowns?: string;
   };
-  waitingPeriods?: string;
+  history?: {
+    prophy?: string;
+    bwx?: string;
+    pano?: string;
+    fmx?: string;
+    exams?: string;
+  };
+  waitingPeriods?: {
+    preventive?: string;
+    basic?: string;
+    major?: string;
+  } | string;
+  missingToothClause?: boolean;
+  fluoride?: {
+    covered?: boolean;
+    ageLimit?: string;
+  };
+  implants?: {
+    covered?: boolean;
+    coverage?: number;
+  };
+  crowns?: {
+    covered?: boolean;
+    coverage?: number;
+  };
+  notes?: string;
 }
 
 interface Verification {
@@ -423,21 +468,67 @@ export default function VerificationResultsDetail() {
           {benefits.waitingPeriods !== undefined && (
             <div className="bg-white rounded-xl border border-slate-200 p-6">
               <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Waiting Periods</h3>
-              {benefits.waitingPeriods === "None" || benefits.waitingPeriods === "none" || !benefits.waitingPeriods ? (
-                <>
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-700 font-medium rounded-full">
-                      <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      None
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-500 mt-3">All services covered immediately</p>
-                </>
-              ) : (
-                <p className="text-slate-700">{benefits.waitingPeriods}</p>
-              )}
+              {(() => {
+                // Handle object format
+                if (typeof benefits.waitingPeriods === 'object') {
+                  const wp = benefits.waitingPeriods;
+                  const hasWaitingPeriods = wp.preventive || wp.basic || wp.major;
+                  if (!hasWaitingPeriods) {
+                    return (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-700 font-medium rounded-full">
+                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            None
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-500 mt-3">All services covered immediately</p>
+                      </>
+                    );
+                  }
+                  return (
+                    <div className="space-y-2">
+                      {wp.preventive && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">Preventive</span>
+                          <span className="font-medium text-slate-900">{wp.preventive}</span>
+                        </div>
+                      )}
+                      {wp.basic && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">Basic</span>
+                          <span className="font-medium text-slate-900">{wp.basic}</span>
+                        </div>
+                      )}
+                      {wp.major && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">Major</span>
+                          <span className="font-medium text-slate-900">{wp.major}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                // Handle string format (legacy)
+                if (benefits.waitingPeriods === "None" || benefits.waitingPeriods === "none" || !benefits.waitingPeriods) {
+                  return (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-700 font-medium rounded-full">
+                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          None
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-500 mt-3">All services covered immediately</p>
+                    </>
+                  );
+                }
+                return <p className="text-slate-700">{benefits.waitingPeriods}</p>;
+              })()}
             </div>
           )}
 
