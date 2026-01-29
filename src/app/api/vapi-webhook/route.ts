@@ -49,13 +49,10 @@ interface VapiWebhookPayload {
       stereoRecordingUrl?: string;
       transcript?: string;
       messages?: Array<{ role: string; message: string }>;
+      // Structured outputs from Vapi - this is where the data actually comes
+      structuredOutputs?: Record<string, VapiToolOutput>;
     };
-    // Tool calls results - the structured output format you showed
-    toolCalls?: Array<{
-      id: string;
-      result: VapiStructuredResult;
-    }>;
-    // Analysis may contain structured data
+    // Analysis may contain structured data (legacy/alternative location)
     analysis?: {
       structuredData?: Record<string, VapiToolOutput>;
       summary?: string;
@@ -77,14 +74,41 @@ export async function POST(request: Request) {
       const artifact = payload.message.artifact;
       const analysis = payload.message.analysis;
 
-      // Extract structured data - it comes as { "uuid": { name, result } }
+      // Extract structured data - check artifact.structuredOutputs first, then analysis.structuredData
       let structuredResult: VapiStructuredResult = {};
 
-      if (analysis?.structuredData) {
-        // Get the first (and likely only) tool output
+      // Primary location: artifact.structuredOutputs
+      if (artifact?.structuredOutputs) {
+        const toolOutputs = Object.values(artifact.structuredOutputs);
+        if (toolOutputs.length > 0 && toolOutputs[0].result) {
+          structuredResult = toolOutputs[0].result;
+        }
+      }
+      // Fallback: analysis.structuredData
+      else if (analysis?.structuredData) {
         const toolOutputs = Object.values(analysis.structuredData);
         if (toolOutputs.length > 0 && toolOutputs[0].result) {
           structuredResult = toolOutputs[0].result;
+        }
+      }
+
+      // Extract patient info from system message if not in structured output
+      let patientName = structuredResult.patient_name;
+      let patientDOB = structuredResult.patient_dob;
+      let memberId = structuredResult.member_id;
+      let insuranceCarrier = structuredResult.insurance_carrier;
+
+      // Try to extract from the system prompt in messages
+      if (!patientName && artifact?.messages) {
+        const systemMessage = artifact.messages.find(m => m.role === "system");
+        if (systemMessage?.message) {
+          const nameMatch = systemMessage.message.match(/Patient:\s*([^\n]+)/i);
+          const dobMatch = systemMessage.message.match(/DOB:\s*([^\n]+)/i);
+          const memberMatch = systemMessage.message.match(/Member ID:\s*([^\n]+)/i);
+
+          if (nameMatch) patientName = nameMatch[1].trim();
+          if (dobMatch) patientDOB = dobMatch[1].trim();
+          if (memberMatch) memberId = memberMatch[1].trim().replace(/\s+/g, '');
         }
       }
 
@@ -133,10 +157,10 @@ export async function POST(request: Request) {
       const verification = await prisma.verification.create({
         data: {
           status,
-          patientName: structuredResult.patient_name || "Unknown Patient",
-          patientDOB: structuredResult.patient_dob || "",
-          memberId: structuredResult.member_id || "",
-          insuranceCarrier: structuredResult.insurance_carrier || "",
+          patientName: patientName || "Unknown Patient",
+          patientDOB: patientDOB || "",
+          memberId: memberId || "",
+          insuranceCarrier: insuranceCarrier || "",
           callDuration,
           recordingUrl: artifact?.recordingUrl || artifact?.stereoRecordingUrl || call?.recordingUrl,
           transcript: artifact?.transcript || call?.transcript,

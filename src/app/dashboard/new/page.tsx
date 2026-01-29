@@ -143,15 +143,20 @@ export default function NewVerification() {
 
           {/* Submit Button */}
           <div className="pt-6 border-t border-slate-200">
-            <Link
-              href="/dashboard/results"
+            <div className="bg-sky-50 border border-sky-200 rounded-lg p-4 mb-4">
+              <p className="text-sky-800 text-sm text-center">
+                Enter patient info and click Start to begin verification
+              </p>
+            </div>
+            <button
+              type="button"
               className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
               Start Verification
-            </Link>
+            </button>
             <p className="mt-3 text-sm text-slate-500 text-center">
               Our AI will call the insurance company and gather all verification details
             </p>
