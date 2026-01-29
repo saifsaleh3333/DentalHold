@@ -398,16 +398,20 @@ export default function VerificationResultsDetail() {
               <span className="text-3xl font-bold text-slate-900">
                 {benefits.deductible !== undefined ? `$${benefits.deductible}` : "N/A"}
               </span>
-              {benefits.deductibleMet !== undefined && benefits.deductible !== undefined && (
-                benefits.deductibleMet >= benefits.deductible ? (
+              {benefits.deductibleMet !== undefined && (
+                benefits.deductibleMet === true ? (
                   <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
                     Met
                   </span>
-                ) : (
+                ) : benefits.deductibleMet === false ? (
                   <span className="inline-flex items-center px-2.5 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">
-                    ${benefits.deductibleMet} of ${benefits.deductible}
+                    Not Met
                   </span>
-                )
+                ) : benefits.deductibleAmountMet !== undefined ? (
+                  <span className="inline-flex items-center px-2.5 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">
+                    ${benefits.deductibleAmountMet} of ${benefits.deductible}
+                  </span>
+                ) : null
               )}
             </div>
           </div>
