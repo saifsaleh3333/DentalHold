@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
+interface CodeDetail {
+  frequency?: string;
+  history?: string;
+  coverage?: number;
+  sharesWithD1110?: boolean;
+  covered?: boolean;
+  ageLimit?: string;
+}
+
 interface Benefits {
   // Eligibility
   eligible?: boolean;
@@ -39,7 +48,7 @@ interface Benefits {
   orthoMaximum?: number;
   orthoMaximumUsed?: number;
 
-  // Coverage
+  // Coverage Percentages
   coverage?: {
     diagnostic?: number;
     preventive?: number;
@@ -50,36 +59,54 @@ interface Benefits {
     periodontics?: number;
   };
 
-  // Frequencies
-  frequencies?: {
-    prophy?: string;
-    bwx?: string;
-    pano?: string;
-    fmx?: string;
-    exams?: string;
+  // Diagnostic codes
+  diagnostic?: {
+    bwx?: CodeDetail;
+    pano?: CodeDetail;
+    fmx?: CodeDetail;
+    d0150?: CodeDetail;
+    d0120?: CodeDetail;
+    d0140?: CodeDetail;
     examsShareFrequency?: boolean;
-    srp?: string;
-    d4910?: string;
-    d4346?: string;
-    crowns?: string;
   };
 
-  // History
-  history?: {
-    prophy?: string;
-    bwx?: string;
-    pano?: string;
-    fmx?: string;
-    exams?: string;
+  // Preventive codes
+  preventive?: {
+    d1110?: CodeDetail;
+    d4346?: CodeDetail;
+    fluoride?: { covered?: boolean; ageLimit?: string };
   };
 
-  // Specific Codes
-  specificCodes?: {
-    d4346Coverage?: number;
-    d4346SharesWithD1110?: boolean;
-    d7210Coverage?: number;
-    d7140Coverage?: number;
-    d4910Coverage?: number;
+  // Extractions codes
+  extractions?: {
+    d7210?: CodeDetail;
+    d7140?: CodeDetail;
+  };
+
+  // Periodontics codes
+  periodontics?: {
+    d4910?: CodeDetail;
+    d4341?: CodeDetail;
+    d4342?: CodeDetail;
+  };
+
+  // Major codes
+  major?: {
+    crowns?: { frequency?: string; covered?: boolean; coverage?: number };
+  };
+
+  // Implants
+  implants?: {
+    covered?: boolean;
+    d6010?: CodeDetail;
+    d6057?: CodeDetail;
+    d6058?: CodeDetail;
+  };
+
+  // Occlusal Guard
+  occlusialGuard?: {
+    covered?: boolean;
+    coverage?: number;
   };
 
   // Waiting Periods
@@ -94,26 +121,38 @@ interface Benefits {
   downgradeCrowns?: boolean;
   downgradeFillings?: boolean;
 
-  // Additional Coverage
-  fluoride?: {
-    covered?: boolean;
-    ageLimit?: string;
-  };
-  implants?: {
-    covered?: boolean;
-    coverage?: number;
-  };
-  crowns?: {
-    covered?: boolean;
-    coverage?: number;
-  };
-  occlusialGuard?: {
-    covered?: boolean;
-    coverage?: number;
-  };
-
   // Notes
   notes?: string;
+
+  // Legacy flat fields (backwards compat with old records)
+  frequencies?: {
+    prophy?: string;
+    bwx?: string;
+    pano?: string;
+    fmx?: string;
+    exams?: string;
+    examsShareFrequency?: boolean;
+    srp?: string;
+    d4910?: string;
+    d4346?: string;
+    crowns?: string;
+  };
+  history?: {
+    prophy?: string;
+    bwx?: string;
+    pano?: string;
+    fmx?: string;
+    exams?: string;
+  };
+  specificCodes?: {
+    d4346Coverage?: number;
+    d4346SharesWithD1110?: boolean;
+    d7210Coverage?: number;
+    d7140Coverage?: number;
+    d4910Coverage?: number;
+  };
+  fluoride?: { covered?: boolean; ageLimit?: string };
+  crowns?: { covered?: boolean; coverage?: number };
 }
 
 interface Verification {
@@ -132,7 +171,7 @@ interface Verification {
   repName?: string;
 }
 
-// Helper component for table cells
+// Helper: table cell
 function Cell({ label, value, className = "" }: { label: string; value?: string | number | boolean | null; className?: string }) {
   const displayValue = value === undefined || value === null ? "—" :
     typeof value === "boolean" ? (value ? "Yes" : "No") :
@@ -146,11 +185,38 @@ function Cell({ label, value, className = "" }: { label: string; value?: string 
   );
 }
 
-// Section header component
+// Helper: section header
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="bg-slate-800 text-white px-4 py-2 font-semibold text-sm uppercase tracking-wide">
       {title}
+    </div>
+  );
+}
+
+// Helper: code row within a coverage column
+function CodeRow({ code, label, detail }: { code: string; label: string; detail?: CodeDetail }) {
+  return (
+    <div className="border-t border-slate-100 pt-2 mt-2 space-y-1">
+      <p className="text-xs font-semibold text-slate-600">{code} <span className="font-normal text-slate-400">({label})</span></p>
+      {detail?.coverage !== undefined && (
+        <div className="flex justify-between text-sm">
+          <span className="text-slate-500">Coverage</span>
+          <span className="font-medium">{detail.coverage}%</span>
+        </div>
+      )}
+      {detail?.frequency && (
+        <div className="flex justify-between text-sm">
+          <span className="text-slate-500">Frequency</span>
+          <span className="font-medium">{detail.frequency}</span>
+        </div>
+      )}
+      {detail?.history && (
+        <div className="flex justify-between text-sm">
+          <span className="text-slate-500">Last Done</span>
+          <span className="font-medium">{detail.history}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -222,13 +288,41 @@ export default function VerificationResultsDetail() {
     );
   }
 
-  const benefits = verification.benefits;
+  const b = verification.benefits;
 
-  // Get waiting period values
+  // Helpers for backwards compat with old data format
   const getWaitingPeriod = (type: 'preventive' | 'basic' | 'major') => {
-    if (!benefits?.waitingPeriods) return "—";
-    if (typeof benefits.waitingPeriods === 'string') return benefits.waitingPeriods;
-    return benefits.waitingPeriods[type] || "None";
+    if (!b?.waitingPeriods) return "—";
+    if (typeof b.waitingPeriods === 'string') return b.waitingPeriods;
+    return b.waitingPeriods[type] || "None";
+  };
+
+  // Build normalized code details from new or legacy format
+  const diag = {
+    bwx: b?.diagnostic?.bwx || { frequency: b?.frequencies?.bwx, history: b?.history?.bwx },
+    pano: b?.diagnostic?.pano || { frequency: b?.frequencies?.pano, history: b?.history?.pano },
+    fmx: b?.diagnostic?.fmx || { frequency: b?.frequencies?.fmx, history: b?.history?.fmx },
+    d0150: b?.diagnostic?.d0150 || {} as CodeDetail,
+    d0120: b?.diagnostic?.d0120 || {} as CodeDetail,
+    d0140: b?.diagnostic?.d0140 || {} as CodeDetail,
+    examsShareFrequency: b?.diagnostic?.examsShareFrequency ?? b?.frequencies?.examsShareFrequency,
+  };
+
+  const prev = {
+    d1110: b?.preventive?.d1110 || { frequency: b?.frequencies?.prophy, history: b?.history?.prophy },
+    d4346: b?.preventive?.d4346 || { coverage: b?.specificCodes?.d4346Coverage, frequency: b?.frequencies?.d4346, sharesWithD1110: b?.specificCodes?.d4346SharesWithD1110 },
+    fluoride: b?.preventive?.fluoride || b?.fluoride || {},
+  };
+
+  const extract = {
+    d7210: b?.extractions?.d7210 || { coverage: b?.specificCodes?.d7210Coverage },
+    d7140: b?.extractions?.d7140 || { coverage: b?.specificCodes?.d7140Coverage },
+  };
+
+  const perio = {
+    d4910: b?.periodontics?.d4910 || { coverage: b?.specificCodes?.d4910Coverage, frequency: b?.frequencies?.d4910 },
+    d4341: b?.periodontics?.d4341 || { frequency: b?.frequencies?.srp },
+    d4342: b?.periodontics?.d4342 || {},
   };
 
   return (
@@ -279,46 +373,44 @@ export default function VerificationResultsDetail() {
         </div>
       )}
 
-      {/* Main Form Layout */}
+      {/* Main Form */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
 
-        {/* Header Info Section */}
+        {/* Row 1: Company, Rep, Subscriber ID */}
         <div className="grid grid-cols-3 border-b border-slate-200">
           <Cell label="Company and #" value={verification.insuranceCarrier} className="border-r border-slate-200" />
           <Cell label="Rep Name / Date" value={verification.repName ? `${verification.repName} / ${formatDate(verification.createdAt)}` : formatDate(verification.createdAt)} className="border-r border-slate-200" />
           <Cell label="Subscriber ID" value={verification.memberId} />
         </div>
+        {/* Row 2: Patient, Subscriber, Effective */}
         <div className="grid grid-cols-3 border-b border-slate-200">
           <Cell label="Patient Name" value={verification.patientName} className="border-r border-slate-200" />
-          <Cell label="Subscriber Name" value={benefits?.subscriberName} className="border-r border-slate-200" />
-          <Cell label="Effective Date" value={benefits?.effectiveDate} />
+          <Cell label="Subscriber Name" value={b?.subscriberName} className="border-r border-slate-200" />
+          <Cell label="Effective Date" value={b?.effectiveDate} />
         </div>
+        {/* Row 3: DOBs, Relationship */}
         <div className="grid grid-cols-3 border-b border-slate-200">
           <Cell label="Patient DOB" value={verification.patientDOB} className="border-r border-slate-200" />
-          <Cell label="Subscriber DOB" value={benefits?.subscriberDOB} className="border-r border-slate-200" />
-          <Cell label="Relationship to Subscriber" value={benefits?.relationshipToSubscriber} />
+          <Cell label="Subscriber DOB" value={b?.subscriberDOB} className="border-r border-slate-200" />
+          <Cell label="Relationship to Subscriber" value={b?.relationshipToSubscriber} />
         </div>
 
         {/* Insurance Payer Information */}
         <SectionHeader title="Insurance Payer Information" />
         <div className="grid grid-cols-3 border-b border-slate-200">
-          <Cell
-            label="IN or OUT of Network"
-            value={benefits?.inNetwork === undefined ? undefined : (benefits.inNetwork ? "In Network" : "Out of Network")}
-            className="border-r border-slate-200"
-          />
-          <Cell label="Plan Type" value={benefits?.planType} className="border-r border-slate-200" />
-          <Cell label="Fee Schedule" value={benefits?.feeSchedule} />
+          <Cell label="IN or OUT of Network" value={b?.inNetwork === undefined ? undefined : (b.inNetwork ? "In Network" : "Out of Network")} className="border-r border-slate-200" />
+          <Cell label="Plan Type" value={b?.planType} className="border-r border-slate-200" />
+          <Cell label="Fee Schedule" value={b?.feeSchedule} />
         </div>
         <div className="grid grid-cols-3 border-b border-slate-200">
-          <Cell label="Plan/Group Name" value={benefits?.planGroupName} className="border-r border-slate-200" />
-          <Cell label="Group Number" value={benefits?.groupNumber} className="border-r border-slate-200" />
+          <Cell label="Plan/Group Name" value={b?.planGroupName} className="border-r border-slate-200" />
+          <Cell label="Group Number" value={b?.groupNumber} className="border-r border-slate-200" />
           <div className="p-3">
             <p className="text-xs text-slate-500 mb-1">Claims Mailing Address / Payor ID</p>
-            <p className="font-medium text-slate-900 text-sm">
-              {benefits?.claimsMailingAddress || benefits?.payorId || "—"}
-              {benefits?.claimsMailingAddress && benefits?.payorId && (
-                <span className="text-slate-500"> | Payor ID: {benefits.payorId}</span>
+            <p className="font-medium text-slate-900 text-sm whitespace-pre-line">
+              {b?.claimsMailingAddress || b?.payorId || "—"}
+              {b?.claimsMailingAddress && b?.payorId && (
+                <span className="text-slate-500"> | Payor ID: {b.payorId}</span>
               )}
             </p>
           </div>
@@ -337,11 +429,11 @@ export default function VerificationResultsDetail() {
           <div className="p-3 flex items-center justify-between">
             <span className="font-semibold text-slate-700">IS THERE A MISSING TOOTH CLAUSE?</span>
             <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-              benefits?.missingToothClause === true ? 'bg-amber-100 text-amber-700' :
-              benefits?.missingToothClause === false ? 'bg-green-100 text-green-700' :
+              b?.missingToothClause === true ? 'bg-amber-100 text-amber-700' :
+              b?.missingToothClause === false ? 'bg-green-100 text-green-700' :
               'bg-slate-200 text-slate-600'
             }`}>
-              {benefits?.missingToothClause === true ? 'YES' : benefits?.missingToothClause === false ? 'NO' : '—'}
+              {b?.missingToothClause === true ? 'YES' : b?.missingToothClause === false ? 'NO' : '—'}
             </span>
           </div>
         </div>
@@ -350,295 +442,263 @@ export default function VerificationResultsDetail() {
         <SectionHeader title="Benefit Details" />
         <div className="grid grid-cols-3 border-b border-slate-200">
           <div className="border-r border-slate-200">
-            <Cell label="General Maximum" value={benefits?.annualMaximum ? `$${benefits.annualMaximum.toLocaleString()}` : undefined} />
-            <Cell label="Maximum Used" value={benefits?.maximumUsed !== undefined ? `$${benefits.maximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
+            <Cell label="General Maximum" value={b?.annualMaximum ? `$${b.annualMaximum.toLocaleString()}` : undefined} />
+            <Cell label="Maximum Used" value={b?.maximumUsed !== undefined ? `$${b.maximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
             <div className="p-3 border-t border-slate-200">
               <p className="text-xs text-slate-500 mb-1">Maximum Applies to:</p>
-              <p className="font-medium text-slate-900">{benefits?.maximumAppliesTo || "Prev / Basic / Major"}</p>
+              <p className="font-medium text-slate-900">{b?.maximumAppliesTo || "Prev / Basic / Major"}</p>
             </div>
           </div>
           <div className="border-r border-slate-200">
-            <Cell label="Deductible" value={benefits?.deductible !== undefined ? `$${benefits.deductible}` : undefined} />
+            <Cell label="Deductible" value={b?.deductible !== undefined ? `$${b.deductible}` : undefined} />
             <Cell
               label="Deductible Met"
               value={
-                benefits?.deductibleMet === true ? "Yes" :
-                benefits?.deductibleMet === false ? "No" :
-                benefits?.deductibleAmountMet !== undefined ? `$${benefits.deductibleAmountMet} met` :
+                b?.deductibleMet === true ? "Yes" :
+                b?.deductibleMet === false ? "No" :
+                b?.deductibleAmountMet !== undefined ? `$${b.deductibleAmountMet} met` :
                 undefined
               }
               className="border-t border-slate-200"
             />
             <div className="p-3 border-t border-slate-200">
               <p className="text-xs text-slate-500 mb-1">Deductible Applies to:</p>
-              <p className="font-medium text-slate-900">{benefits?.deductibleAppliesTo || "Prev / Basic / Major"}</p>
+              <p className="font-medium text-slate-900">{b?.deductibleAppliesTo || "Prev / Basic / Major"}</p>
             </div>
           </div>
           <div>
-            <Cell label="Ortho Maximum" value={benefits?.orthoMaximum ? `$${benefits.orthoMaximum.toLocaleString()}` : undefined} />
-            <Cell label="Ortho Max. Used" value={benefits?.orthoMaximumUsed !== undefined ? `$${benefits.orthoMaximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
+            <Cell label="Ortho Maximum" value={b?.orthoMaximum ? `$${b.orthoMaximum.toLocaleString()}` : undefined} />
+            <Cell label="Ortho Max. Used" value={b?.orthoMaximumUsed !== undefined ? `$${b.orthoMaximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
           </div>
         </div>
 
         {/* Coverage Percentages */}
         <SectionHeader title="Coverage Percentages" />
 
-        {/* Row 1: Diagnostic, Preventive, Basic */}
+        {/* Row 1: Diagnostic | Preventive | Basic + Endodontics */}
         <div className="grid grid-cols-3 border-b border-slate-200">
-          {/* Diagnostic Column */}
-          <div className="border-r border-slate-200 p-4 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Diagnostic</p>
-              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.diagnostic !== undefined ? `${benefits.coverage.diagnostic}%` : "—"}</p>
-            </div>
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Frequency of BWXs</span>
-                <span className="font-medium">{benefits?.frequencies?.bwx || "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">BWX History</span>
-                <span className="font-medium">{benefits?.history?.bwx || "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Pano Frequency</span>
-                <span className="font-medium">{benefits?.frequencies?.pano || "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Pano History</span>
-                <span className="font-medium">{benefits?.history?.pano || "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">FMX Frequency</span>
-                <span className="font-medium">{benefits?.frequencies?.fmx || "—"}</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-slate-500 block">Exams Frequency</span>
-                <span className="font-medium text-slate-900 break-words">{benefits?.frequencies?.exams || "—"}</span>
-              </div>
-              {benefits?.frequencies?.examsShareFrequency !== undefined && (
+          {/* Diagnostic */}
+          <div className="border-r border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-700">Diagnostic</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.diagnostic !== undefined ? `${b.coverage.diagnostic}%` : "—"}</p>
+
+            <CodeRow code="D0220/D0274" label="Bitewings" detail={diag.bwx} />
+            <CodeRow code="D0330" label="Pano" detail={diag.pano} />
+            <CodeRow code="D0210" label="FMX" detail={diag.fmx} />
+            <CodeRow code="D0150" label="Comp. Exam" detail={diag.d0150} />
+            <CodeRow code="D0120" label="Periodic Exam" detail={diag.d0120} />
+            <CodeRow code="D0140" label="Limited Exam" detail={diag.d0140} />
+
+            {diag.examsShareFrequency !== undefined && (
+              <div className="border-t border-slate-100 pt-2 mt-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Exams Share Freq?</span>
-                  <span className="font-medium">{benefits.frequencies.examsShareFrequency ? "Yes" : "No"}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Preventive Column */}
-          <div className="border-r border-slate-200 p-4 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Preventive</p>
-              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.preventive !== undefined ? `${benefits.coverage.preventive}%` : "—"}</p>
-            </div>
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">D1110 Frequency</span>
-                <span className="font-medium">{benefits?.frequencies?.prophy || "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">D1110 History</span>
-                <span className="font-medium">{benefits?.history?.prophy || "—"}</span>
-              </div>
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">D4346 Coverage</span>
-                  <span className="font-medium">{benefits?.specificCodes?.d4346Coverage !== undefined ? `${benefits.specificCodes.d4346Coverage}%` : "—"}</span>
-                </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-slate-500">D4346 shares w/ D1110?</span>
-                  <span className="font-medium">{benefits?.specificCodes?.d4346SharesWithD1110 !== undefined ? (benefits.specificCodes.d4346SharesWithD1110 ? "Yes" : "No") : "—"}</span>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Fluoride D1208</span>
-                  <span className="font-medium">{benefits?.fluoride?.covered !== undefined ? (benefits.fluoride.covered ? "Yes" : "No") : "—"}</span>
-                </div>
-                {benefits?.fluoride?.ageLimit && (
-                  <div className="flex justify-between text-sm mt-1">
-                    <span className="text-slate-500">Age Limit</span>
-                    <span className="font-medium">{benefits.fluoride.ageLimit}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Basic Column */}
-          <div className="p-4 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Basic</p>
-              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.basic !== undefined ? `${benefits.coverage.basic}%` : "—"}</p>
-            </div>
-            <div className="pt-3 border-t border-slate-100">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Downgrade fillings?</span>
-                <span className="font-medium">{benefits?.downgradeFillings !== undefined ? (benefits.downgradeFillings ? "Yes" : "No") : "—"}</span>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <p className="text-sm font-semibold text-slate-700">Endodontics</p>
-              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.endodontics !== undefined ? `${benefits.coverage.endodontics}%` : "—"}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Major, Extractions, Periodontics */}
-        <div className="grid grid-cols-3 border-b border-slate-200">
-          {/* Major Column */}
-          <div className="border-r border-slate-200 p-4 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Major</p>
-              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.major !== undefined ? `${benefits.coverage.major}%` : "—"}</p>
-            </div>
-            <div className="pt-3 border-t border-slate-100">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Downgrade crowns?</span>
-                <span className="font-medium">{benefits?.downgradeCrowns !== undefined ? (benefits.downgradeCrowns ? "Yes" : "No") : "—"}</span>
-              </div>
-              {benefits?.frequencies?.crowns && (
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-slate-500">Crown Frequency</span>
-                  <span className="font-medium">{benefits.frequencies.crowns}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Extractions Column */}
-          <div className="border-r border-slate-200 p-4 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Extractions</p>
-              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.extractions !== undefined ? `${benefits.coverage.extractions}%` : "—"}</p>
-            </div>
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">D7210 (Surgical)</span>
-                <span className="font-medium">{benefits?.specificCodes?.d7210Coverage !== undefined ? `${benefits.specificCodes.d7210Coverage}%` : "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">D7140 (Simple)</span>
-                <span className="font-medium">{benefits?.specificCodes?.d7140Coverage !== undefined ? `${benefits.specificCodes.d7140Coverage}%` : "—"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Periodontics Column */}
-          <div className="p-4 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Periodontics</p>
-              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.periodontics !== undefined ? `${benefits.coverage.periodontics}%` : "—"}</p>
-            </div>
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">D4910 Coverage</span>
-                <span className="font-medium">{benefits?.specificCodes?.d4910Coverage !== undefined ? `${benefits.specificCodes.d4910Coverage}%` : "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">D4910 Frequency</span>
-                <span className="font-medium">{benefits?.frequencies?.d4910 || "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">SRP (D4341/D4342)</span>
-                <span className="font-medium">{benefits?.frequencies?.srp || "—"}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 3: Implants, Occlusal Guard */}
-        <div className="grid grid-cols-3 border-b border-slate-200">
-          {/* Implants Column */}
-          <div className="border-r border-slate-200 p-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <p className="text-sm font-semibold text-slate-700">Implants Covered?</p>
-              <span className={`px-2 py-0.5 rounded text-sm font-semibold ${
-                benefits?.implants?.covered ? 'bg-green-100 text-green-700' :
-                benefits?.implants?.covered === false ? 'bg-red-100 text-red-700' :
-                'bg-slate-100 text-slate-600'
-              }`}>
-                {benefits?.implants?.covered !== undefined ? (benefits.implants.covered ? "Yes" : "No") : "—"}
-              </span>
-            </div>
-            {benefits?.implants?.coverage !== undefined && (
-              <div className="pt-3 border-t border-slate-100">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Coverage</span>
-                  <span className="font-medium">{benefits.implants.coverage}%</span>
+                  <span className="text-slate-500">Exams share freq?</span>
+                  <span className="font-medium">{diag.examsShareFrequency ? "Yes" : "No"}</span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Occlusal Guard Column */}
-          <div className="border-r border-slate-200 p-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <p className="text-sm font-semibold text-slate-700">Occlusal Guard (D9944)</p>
-              <span className={`px-2 py-0.5 rounded text-sm font-semibold ${
-                benefits?.occlusialGuard?.covered ? 'bg-green-100 text-green-700' :
-                benefits?.occlusialGuard?.covered === false ? 'bg-red-100 text-red-700' :
-                'bg-slate-100 text-slate-600'
-              }`}>
-                {benefits?.occlusialGuard?.covered !== undefined ? (benefits.occlusialGuard.covered ? "Yes" : "No") : "—"}
-              </span>
-            </div>
-            {benefits?.occlusialGuard?.coverage !== undefined && (
-              <div className="pt-3 border-t border-slate-100">
+          {/* Preventive */}
+          <div className="border-r border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-700">Preventive</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.preventive !== undefined ? `${b.coverage.preventive}%` : "—"}</p>
+
+            <CodeRow code="D1110" label="Prophy" detail={prev.d1110} />
+
+            <div className="border-t border-slate-100 pt-2 mt-2 space-y-1">
+              <p className="text-xs font-semibold text-slate-600">D4346 <span className="font-normal text-slate-400">(Gingivitis Scaling)</span></p>
+              {prev.d4346.coverage !== undefined && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Coverage</span>
-                  <span className="font-medium">{benefits.occlusialGuard.coverage}%</span>
+                  <span className="font-medium">{prev.d4346.coverage}%</span>
+                </div>
+              )}
+              {prev.d4346.frequency && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Frequency</span>
+                  <span className="font-medium">{prev.d4346.frequency}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Shares w/ D1110?</span>
+                <span className="font-medium">{prev.d4346.sharesWithD1110 !== undefined ? (prev.d4346.sharesWithD1110 ? "Yes" : "No") : "—"}</span>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 pt-2 mt-2 space-y-1">
+              <p className="text-xs font-semibold text-slate-600">D1208 <span className="font-normal text-slate-400">(Fluoride)</span></p>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Covered</span>
+                <span className="font-medium">{prev.fluoride.covered !== undefined ? (prev.fluoride.covered ? "Yes" : "No") : "—"}</span>
+              </div>
+              {prev.fluoride.ageLimit && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Age Limit</span>
+                  <span className="font-medium">{prev.fluoride.ageLimit}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Basic + Endodontics */}
+          <div className="p-4">
+            <p className="text-sm font-semibold text-slate-700">Basic</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.basic !== undefined ? `${b.coverage.basic}%` : "—"}</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Downgrade fillings?</span>
+              <span className="font-medium">{b?.downgradeFillings !== undefined ? (b.downgradeFillings ? "Yes" : "No") : "—"}</span>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-200">
+              <p className="text-sm font-semibold text-slate-700">Endodontics</p>
+              <p className="text-2xl font-bold text-slate-900">{b?.coverage?.endodontics !== undefined ? `${b.coverage.endodontics}%` : "—"}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Major | Extractions | Periodontics */}
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          {/* Major */}
+          <div className="border-r border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-700">Major</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.major !== undefined ? `${b.coverage.major}%` : "—"}</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Downgrade crowns?</span>
+              <span className="font-medium">{b?.downgradeCrowns !== undefined ? (b.downgradeCrowns ? "Yes" : "No") : "—"}</span>
+            </div>
+            {(b?.major?.crowns?.frequency || b?.frequencies?.crowns) && (
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-slate-500">Crown frequency</span>
+                <span className="font-medium">{b?.major?.crowns?.frequency || b?.frequencies?.crowns}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Extractions */}
+          <div className="border-r border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-700">Extractions</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.extractions !== undefined ? `${b.coverage.extractions}%` : "—"}</p>
+
+            <div className="space-y-1 border-t border-slate-100 pt-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">D7210 (Surgical)</span>
+                <span className="font-medium">{extract.d7210.coverage !== undefined ? `${extract.d7210.coverage}%` : "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">D7140 (Simple)</span>
+                <span className="font-medium">{extract.d7140.coverage !== undefined ? `${extract.d7140.coverage}%` : "—"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Periodontics */}
+          <div className="p-4">
+            <p className="text-sm font-semibold text-slate-700">Periodontics</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.periodontics !== undefined ? `${b.coverage.periodontics}%` : "—"}</p>
+
+            <CodeRow code="D4910" label="Perio Maint." detail={perio.d4910} />
+            <CodeRow code="D4341" label="SRP 4+ teeth" detail={perio.d4341} />
+            <CodeRow code="D4342" label="SRP 1-3 teeth" detail={perio.d4342} />
+          </div>
+        </div>
+
+        {/* Row 3: Implants | Occlusal Guard | Call Reference */}
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          {/* Implants */}
+          <div className="border-r border-slate-200 p-4">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm font-semibold text-slate-700">Implants Covered?</p>
+              <span className={`px-2 py-0.5 rounded text-sm font-semibold ${
+                b?.implants?.covered ? 'bg-green-100 text-green-700' :
+                b?.implants?.covered === false ? 'bg-red-100 text-red-700' :
+                'bg-slate-100 text-slate-600'
+              }`}>
+                {b?.implants?.covered !== undefined ? (b.implants.covered ? "Yes" : "No") : "—"}
+              </span>
+            </div>
+            {b?.implants?.covered && (
+              <div className="space-y-1 border-t border-slate-100 pt-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">D6010 (Implant Body)</span>
+                  <span className="font-medium">{b.implants.d6010?.coverage !== undefined ? `${b.implants.d6010.coverage}%` : "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">D6057 (Abutment)</span>
+                  <span className="font-medium">{b.implants.d6057?.coverage !== undefined ? `${b.implants.d6057.coverage}%` : "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">D6058 (Crown)</span>
+                  <span className="font-medium">{b.implants.d6058?.coverage !== undefined ? `${b.implants.d6058.coverage}%` : "—"}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Occlusal Guard */}
+          <div className="border-r border-slate-200 p-4">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm font-semibold text-slate-700">Occlusal Guard (D9944)</p>
+              <span className={`px-2 py-0.5 rounded text-sm font-semibold ${
+                b?.occlusialGuard?.covered ? 'bg-green-100 text-green-700' :
+                b?.occlusialGuard?.covered === false ? 'bg-red-100 text-red-700' :
+                'bg-slate-100 text-slate-600'
+              }`}>
+                {b?.occlusialGuard?.covered !== undefined ? (b.occlusialGuard.covered ? "Yes" : "No") : "—"}
+              </span>
+            </div>
+            {b?.occlusialGuard?.coverage !== undefined && (
+              <div className="border-t border-slate-100 pt-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Coverage</span>
+                  <span className="font-medium">{b.occlusialGuard.coverage}%</span>
                 </div>
               </div>
             )}
           </div>
 
           {/* Call Reference */}
-          <div className="p-4 space-y-2">
-            <p className="text-sm font-semibold text-slate-700">Call Reference</p>
-            {verification.referenceNumber && (
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Ref #</span>
-                <span className="font-mono font-medium">{verification.referenceNumber}</span>
-              </div>
-            )}
-            {verification.callDuration && (
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Duration</span>
-                <span className="font-medium">{verification.callDuration}</span>
-              </div>
-            )}
+          <div className="p-4">
+            <p className="text-sm font-semibold text-slate-700 mb-2">Call Reference</p>
+            <div className="space-y-1">
+              {verification.referenceNumber && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Ref #</span>
+                  <span className="font-mono font-medium">{verification.referenceNumber}</span>
+                </div>
+              )}
+              {verification.callDuration && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Duration</span>
+                  <span className="font-medium">{verification.callDuration}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Notes Section */}
-        {benefits?.notes && (
+        {/* Notes */}
+        {b?.notes && (
           <>
             <SectionHeader title="Notes" />
             <div className="p-4">
-              <p className="text-slate-700 whitespace-pre-wrap">{benefits.notes}</p>
+              <p className="text-slate-700 whitespace-pre-wrap">{b.notes}</p>
             </div>
           </>
         )}
       </div>
 
-      {/* Call Recording Section */}
+      {/* Call Recording */}
       {(verification.recordingUrl || verification.transcript) && (
         <div className="mt-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="bg-slate-800 text-white px-4 py-2 font-semibold text-sm uppercase tracking-wide flex items-center justify-between">
             <span>Call Recording</span>
             {verification.recordingUrl && (
-              <a
-                href={verification.recordingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sky-300 hover:text-sky-200 text-xs font-normal"
-              >
+              <a href={verification.recordingUrl} target="_blank" rel="noopener noreferrer" className="text-sky-300 hover:text-sky-200 text-xs font-normal">
                 Download
               </a>
             )}
           </div>
-
           {verification.recordingUrl && (
             <div className="p-4 border-b border-slate-200">
               <audio controls className="w-full" src={verification.recordingUrl}>
@@ -646,7 +706,6 @@ export default function VerificationResultsDetail() {
               </audio>
             </div>
           )}
-
           {verification.transcript && (
             <div>
               <button
@@ -654,16 +713,10 @@ export default function VerificationResultsDetail() {
                 className="w-full px-4 py-3 flex items-center justify-between text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 <span className="font-medium">{showTranscript ? "Hide Transcript" : "View Transcript"}</span>
-                <svg
-                  className={`w-5 h-5 transition-transform ${showTranscript ? "rotate-180" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className={`w-5 h-5 transition-transform ${showTranscript ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-
               {showTranscript && (
                 <div className="px-4 pb-4">
                   <div className="max-h-96 overflow-y-auto bg-slate-50 rounded-lg p-4">

@@ -25,15 +25,7 @@ interface VapiStructuredResult {
   claims_mailing_address?: string;
   payor_id?: string;
 
-  // Waiting Periods
-  waiting_period_preventive?: string;
-  waiting_period_basic?: string;
-  waiting_period_major?: string;
-
-  // Clauses
-  missing_tooth_clause?: boolean;
-
-  // Benefit Maximums & Deductibles
+  // Maximums & Deductibles
   annual_maximum?: number;
   maximum_used?: number;
   maximum_remaining?: number;
@@ -45,6 +37,14 @@ interface VapiStructuredResult {
   ortho_maximum?: number;
   ortho_maximum_used?: number;
 
+  // Waiting Periods
+  waiting_period_preventive?: string;
+  waiting_period_basic?: string;
+  waiting_period_major?: string;
+
+  // Clauses
+  missing_tooth_clause?: boolean;
+
   // Coverage Percentages
   coverage_diagnostic?: number;
   coverage_preventive?: number;
@@ -54,41 +54,54 @@ interface VapiStructuredResult {
   coverage_endodontics?: number;
   coverage_periodontics?: number;
 
-  // Frequencies & History
+  // Diagnostic - Frequencies & History
   frequency_bwx?: string;
   history_bwx?: string;
   frequency_pano?: string;
   history_pano?: string;
   frequency_fmx?: string;
   history_fmx?: string;
-  frequency_exams?: string;
+  frequency_d0150?: string;
+  history_d0150?: string;
+  frequency_d0120?: string;
+  history_d0120?: string;
+  frequency_d0140?: string;
+  history_d0140?: string;
   exams_share_frequency?: boolean;
-  history_exams?: string;
-  frequency_prophy?: string;
-  history_prophy?: string;
 
-  // Specific Procedure Codes
+  // Preventive
+  frequency_d1110?: string;
+  history_d1110?: string;
   coverage_d4346?: number;
   frequency_d4346?: string;
   d4346_shares_with_d1110?: boolean;
   fluoride_covered?: boolean;
   fluoride_age_limit?: string;
-  coverage_d7210?: number;
-  coverage_d7140?: number;
-  coverage_d4910?: number;
-  frequency_d4910?: string;
-  frequency_srp?: string;
 
-  // Additional Coverage
-  implants_covered?: boolean;
-  implant_coverage_percentage?: number;
-  crowns_covered?: boolean;
-  crown_coverage_percentage?: number;
+  // Basic
+  downgrade_fillings?: boolean;
+
+  // Major
+  downgrade_crowns?: boolean;
   frequency_crowns?: string;
 
-  // Downgrade clauses
-  downgrade_crowns?: boolean;
-  downgrade_fillings?: boolean;
+  // Extractions
+  coverage_d7210?: number;
+  coverage_d7140?: number;
+
+  // Periodontics
+  coverage_d4910?: number;
+  frequency_d4910?: string;
+  frequency_d4341?: string;
+  history_d4341?: string;
+  frequency_d4342?: string;
+  history_d4342?: string;
+
+  // Implants
+  implants_covered?: boolean;
+  coverage_d6010?: number;
+  coverage_d6057?: number;
+  coverage_d6058?: number;
 
   // Occlusal Guard
   occlusal_guard_covered?: boolean;
@@ -97,19 +110,25 @@ interface VapiStructuredResult {
   // Notes
   notes?: string;
 
-  // Legacy field names (for backwards compatibility)
+  // Legacy field names (backwards compatibility)
   member_id?: string;
   insurance_carrier?: string;
-  benefit_year?: string;
   remaining_maximum?: number;
   preventive_coverage?: number;
   basic_coverage?: number;
   major_coverage?: number;
+  frequency_prophy?: string;
+  history_prophy?: string;
   prophy_frequency?: string;
+  frequency_exams?: string;
+  history_exams?: string;
+  frequency_srp?: string;
   bwx_frequency?: string;
   pano_frequency?: string;
-  waiting_periods?: string;
   reference_number?: string;
+  implant_coverage_percentage?: number;
+  crowns_covered?: boolean;
+  crown_coverage_percentage?: number;
 }
 
 interface VapiToolOutput {
@@ -202,7 +221,6 @@ export async function POST(request: Request) {
         status = "failed";
       }
       if (structuredResult.patient_eligible === undefined && !structuredResult.annual_maximum) {
-        // No key data captured
         status = "failed";
       }
 
@@ -214,7 +232,7 @@ export async function POST(request: Request) {
         callDuration = `${minutes} min ${seconds} sec`;
       }
 
-      // Build comprehensive benefits object
+      // Build comprehensive benefits object grouped by service category
       const benefits = {
         // Eligibility
         eligible: structuredResult.patient_eligible,
@@ -250,17 +268,6 @@ export async function POST(request: Request) {
         orthoMaximum: structuredResult.ortho_maximum,
         orthoMaximumUsed: structuredResult.ortho_maximum_used,
 
-        // Coverage Percentages
-        coverage: {
-          diagnostic: structuredResult.coverage_diagnostic,
-          preventive: structuredResult.coverage_preventive || structuredResult.preventive_coverage,
-          basic: structuredResult.coverage_basic || structuredResult.basic_coverage,
-          major: structuredResult.coverage_major || structuredResult.major_coverage,
-          extractions: structuredResult.coverage_extractions,
-          endodontics: structuredResult.coverage_endodontics,
-          periodontics: structuredResult.coverage_periodontics,
-        },
-
         // Waiting Periods
         waitingPeriods: {
           preventive: structuredResult.waiting_period_preventive,
@@ -273,52 +280,73 @@ export async function POST(request: Request) {
         downgradeCrowns: structuredResult.downgrade_crowns,
         downgradeFillings: structuredResult.downgrade_fillings,
 
-        // Frequencies
-        frequencies: {
-          prophy: structuredResult.frequency_prophy || structuredResult.prophy_frequency,
-          bwx: structuredResult.frequency_bwx || structuredResult.bwx_frequency,
-          pano: structuredResult.frequency_pano || structuredResult.pano_frequency,
-          fmx: structuredResult.frequency_fmx,
-          exams: structuredResult.frequency_exams,
+        // Coverage Percentages
+        coverage: {
+          diagnostic: structuredResult.coverage_diagnostic,
+          preventive: structuredResult.coverage_preventive || structuredResult.preventive_coverage,
+          basic: structuredResult.coverage_basic || structuredResult.basic_coverage,
+          major: structuredResult.coverage_major || structuredResult.major_coverage,
+          extractions: structuredResult.coverage_extractions,
+          endodontics: structuredResult.coverage_endodontics,
+          periodontics: structuredResult.coverage_periodontics,
+        },
+
+        // Diagnostic codes
+        diagnostic: {
+          bwx: { frequency: structuredResult.frequency_bwx || structuredResult.bwx_frequency, history: structuredResult.history_bwx },
+          pano: { frequency: structuredResult.frequency_pano || structuredResult.pano_frequency, history: structuredResult.history_pano },
+          fmx: { frequency: structuredResult.frequency_fmx, history: structuredResult.history_fmx },
+          d0150: { frequency: structuredResult.frequency_d0150, history: structuredResult.history_d0150 },
+          d0120: { frequency: structuredResult.frequency_d0120, history: structuredResult.history_d0120 },
+          d0140: { frequency: structuredResult.frequency_d0140, history: structuredResult.history_d0140 },
           examsShareFrequency: structuredResult.exams_share_frequency,
-          srp: structuredResult.frequency_srp,
-          d4910: structuredResult.frequency_d4910,
-          d4346: structuredResult.frequency_d4346,
-          crowns: structuredResult.frequency_crowns,
         },
 
-        // History (last dates)
-        history: {
-          prophy: structuredResult.history_prophy,
-          bwx: structuredResult.history_bwx,
-          pano: structuredResult.history_pano,
-          fmx: structuredResult.history_fmx,
-          exams: structuredResult.history_exams,
+        // Preventive codes
+        preventive: {
+          d1110: {
+            frequency: structuredResult.frequency_d1110 || structuredResult.frequency_prophy || structuredResult.prophy_frequency,
+            history: structuredResult.history_d1110 || structuredResult.history_prophy,
+          },
+          d4346: {
+            coverage: structuredResult.coverage_d4346,
+            frequency: structuredResult.frequency_d4346,
+            sharesWithD1110: structuredResult.d4346_shares_with_d1110,
+          },
+          fluoride: {
+            covered: structuredResult.fluoride_covered,
+            ageLimit: structuredResult.fluoride_age_limit,
+          },
         },
 
-        // Specific Codes
-        specificCodes: {
-          d4346Coverage: structuredResult.coverage_d4346,
-          d4346SharesWithD1110: structuredResult.d4346_shares_with_d1110,
-          d7210Coverage: structuredResult.coverage_d7210,
-          d7140Coverage: structuredResult.coverage_d7140,
-          d4910Coverage: structuredResult.coverage_d4910,
+        // Extractions codes
+        extractions: {
+          d7210: { coverage: structuredResult.coverage_d7210 },
+          d7140: { coverage: structuredResult.coverage_d7140 },
         },
 
-        // Fluoride
-        fluoride: {
-          covered: structuredResult.fluoride_covered,
-          ageLimit: structuredResult.fluoride_age_limit,
+        // Periodontics codes
+        periodontics: {
+          d4910: { coverage: structuredResult.coverage_d4910, frequency: structuredResult.frequency_d4910 },
+          d4341: { frequency: structuredResult.frequency_d4341 || structuredResult.frequency_srp, history: structuredResult.history_d4341 },
+          d4342: { frequency: structuredResult.frequency_d4342, history: structuredResult.history_d4342 },
         },
 
-        // Additional Coverage
+        // Major codes
+        major: {
+          crowns: {
+            frequency: structuredResult.frequency_crowns,
+            covered: structuredResult.crowns_covered,
+            coverage: structuredResult.crown_coverage_percentage,
+          },
+        },
+
+        // Implants
         implants: {
           covered: structuredResult.implants_covered,
-          coverage: structuredResult.implant_coverage_percentage,
-        },
-        crowns: {
-          covered: structuredResult.crowns_covered,
-          coverage: structuredResult.crown_coverage_percentage,
+          d6010: { coverage: structuredResult.coverage_d6010 || structuredResult.implant_coverage_percentage },
+          d6057: { coverage: structuredResult.coverage_d6057 },
+          d6058: { coverage: structuredResult.coverage_d6058 },
         },
 
         // Occlusal Guard
