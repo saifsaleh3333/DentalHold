@@ -5,24 +5,41 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 
 interface Benefits {
+  // Eligibility
   eligible?: boolean;
   effectiveDate?: string;
   inNetwork?: boolean;
+
+  // Plan Info
   planType?: string;
   feeSchedule?: string;
   planGroupName?: string;
   groupNumber?: string;
   payorId?: string;
+  claimsMailingAddress?: string;
+
+  // Subscriber Info
+  subscriberName?: string;
+  subscriberDOB?: string;
+  relationshipToSubscriber?: string;
+
+  // Maximums
   annualMaximum?: number;
   maximumUsed?: number;
   remainingMaximum?: number;
   maximumAppliesTo?: string;
+
+  // Deductible
   deductible?: number;
   deductibleMet?: boolean | number;
   deductibleAmountMet?: number;
   deductibleAppliesTo?: string;
+
+  // Ortho
   orthoMaximum?: number;
   orthoMaximumUsed?: number;
+
+  // Coverage
   coverage?: {
     diagnostic?: number;
     preventive?: number;
@@ -32,17 +49,22 @@ interface Benefits {
     endodontics?: number;
     periodontics?: number;
   };
+
+  // Frequencies
   frequencies?: {
     prophy?: string;
     bwx?: string;
     pano?: string;
     fmx?: string;
     exams?: string;
+    examsShareFrequency?: boolean;
     srp?: string;
     d4910?: string;
     d4346?: string;
     crowns?: string;
   };
+
+  // History
   history?: {
     prophy?: string;
     bwx?: string;
@@ -50,12 +72,27 @@ interface Benefits {
     fmx?: string;
     exams?: string;
   };
+
+  // Specific Codes
+  specificCodes?: {
+    d4346Coverage?: number;
+    d4346SharesWithD1110?: boolean;
+    d7210Coverage?: number;
+    d7140Coverage?: number;
+    d4910Coverage?: number;
+  };
+
+  // Waiting Periods
   waitingPeriods?: {
     preventive?: string;
     basic?: string;
     major?: string;
   } | string;
+
+  // Clauses
   missingToothClause?: boolean;
+
+  // Additional Coverage
   fluoride?: {
     covered?: boolean;
     ageLimit?: string;
@@ -68,6 +105,8 @@ interface Benefits {
     covered?: boolean;
     coverage?: number;
   };
+
+  // Notes
   notes?: string;
 }
 
@@ -389,6 +428,14 @@ export default function VerificationResultsDetail() {
                 </div>
               </div>
             )}
+            {benefits.maximumAppliesTo && (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Applies To</span>
+                  <span className="font-medium text-slate-900">{benefits.maximumAppliesTo}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Deductible Card */}
@@ -414,6 +461,14 @@ export default function VerificationResultsDetail() {
                 ) : null
               )}
             </div>
+            {benefits.deductibleAppliesTo && (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Applies To</span>
+                  <span className="font-medium text-slate-900">{benefits.deductibleAppliesTo}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Coverage Breakdown Card */}
@@ -502,6 +557,11 @@ export default function VerificationResultsDetail() {
                   <div className="p-4 bg-slate-50 rounded-lg">
                     <p className="text-sm text-slate-500 mb-1">Exams</p>
                     <p className="font-semibold text-slate-900">{benefits.frequencies.exams}</p>
+                    {benefits.frequencies.examsShareFrequency !== undefined && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        {benefits.frequencies.examsShareFrequency ? 'Comprehensive & periodic share frequency' : 'Separate exam frequencies'}
+                      </p>
+                    )}
                     {benefits.history?.exams && <p className="text-xs text-slate-400 mt-1">Last: {benefits.history.exams}</p>}
                   </div>
                 )}
@@ -521,6 +581,50 @@ export default function VerificationResultsDetail() {
                   <div className="p-4 bg-slate-50 rounded-lg">
                     <p className="text-sm text-slate-500 mb-1">Crown Replacement</p>
                     <p className="font-semibold text-slate-900">{benefits.frequencies.crowns}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Specific Procedure Codes Card */}
+          {benefits.specificCodes && (benefits.specificCodes.d4346Coverage !== undefined || benefits.specificCodes.d7210Coverage !== undefined || benefits.specificCodes.d7140Coverage !== undefined || benefits.specificCodes.d4910Coverage !== undefined) && (
+            <div className="bg-white rounded-xl border border-slate-200 p-6 col-span-2">
+              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Specific Procedure Codes</h3>
+              <div className="grid grid-cols-3 gap-4">
+                {benefits.specificCodes.d4346Coverage !== undefined && (
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-sm text-slate-500 mb-1">D4346 (Gingivitis)</p>
+                    <p className="font-semibold text-slate-900">{benefits.specificCodes.d4346Coverage}%</p>
+                    {benefits.specificCodes.d4346SharesWithD1110 !== undefined && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        {benefits.specificCodes.d4346SharesWithD1110 ? 'Shares frequency with D1110' : 'Separate frequency'}
+                      </p>
+                    )}
+                    {benefits.frequencies?.d4346 && (
+                      <p className="text-xs text-slate-400 mt-1">Frequency: {benefits.frequencies.d4346}</p>
+                    )}
+                  </div>
+                )}
+                {benefits.specificCodes.d7210Coverage !== undefined && (
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-sm text-slate-500 mb-1">D7210 (Surgical Extraction)</p>
+                    <p className="font-semibold text-slate-900">{benefits.specificCodes.d7210Coverage}%</p>
+                  </div>
+                )}
+                {benefits.specificCodes.d7140Coverage !== undefined && (
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-sm text-slate-500 mb-1">D7140 (Simple Extraction)</p>
+                    <p className="font-semibold text-slate-900">{benefits.specificCodes.d7140Coverage}%</p>
+                  </div>
+                )}
+                {benefits.specificCodes.d4910Coverage !== undefined && (
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-sm text-slate-500 mb-1">D4910 (Perio Maintenance)</p>
+                    <p className="font-semibold text-slate-900">{benefits.specificCodes.d4910Coverage}%</p>
+                    {benefits.frequencies?.d4910 && (
+                      <p className="text-xs text-slate-400 mt-1">Frequency: {benefits.frequencies.d4910}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -596,7 +700,7 @@ export default function VerificationResultsDetail() {
           )}
 
           {/* Plan Info Card */}
-          {(benefits.inNetwork !== undefined || benefits.groupNumber || benefits.payorId || benefits.feeSchedule || benefits.planGroupName) && (
+          {(benefits.inNetwork !== undefined || benefits.groupNumber || benefits.payorId || benefits.feeSchedule || benefits.planGroupName || benefits.claimsMailingAddress) && (
             <div className="bg-white rounded-xl border border-slate-200 p-6">
               <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Plan Information</h3>
               <div className="space-y-3">
@@ -630,6 +734,39 @@ export default function VerificationResultsDetail() {
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Fee Schedule</span>
                     <span className="font-medium text-slate-900">{benefits.feeSchedule}</span>
+                  </div>
+                )}
+                {benefits.claimsMailingAddress && (
+                  <div className="text-sm">
+                    <span className="text-slate-500 block mb-1">Claims Mailing Address</span>
+                    <span className="font-medium text-slate-900 whitespace-pre-line">{benefits.claimsMailingAddress}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Subscriber Info Card */}
+          {(benefits.subscriberName || benefits.subscriberDOB || benefits.relationshipToSubscriber) && (
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Subscriber Information</h3>
+              <div className="space-y-3">
+                {benefits.subscriberName && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Subscriber Name</span>
+                    <span className="font-medium text-slate-900">{benefits.subscriberName}</span>
+                  </div>
+                )}
+                {benefits.subscriberDOB && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Subscriber DOB</span>
+                    <span className="font-medium text-slate-900">{benefits.subscriberDOB}</span>
+                  </div>
+                )}
+                {benefits.relationshipToSubscriber && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Relationship</span>
+                    <span className="font-medium text-slate-900">{benefits.relationshipToSubscriber}</span>
                   </div>
                 )}
               </div>
