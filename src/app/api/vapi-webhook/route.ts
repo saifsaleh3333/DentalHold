@@ -1,15 +1,98 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Vapi structured output format
+// Vapi structured output format - comprehensive dental insurance verification
 interface VapiStructuredResult {
-  plan_type?: string;
-  deductible?: number;
-  benefit_year?: string;
-  annual_maximum?: number;
-  deductible_met?: number;
+  // Header Info
+  insurance_company?: string;
+  rep_name?: string;
+  call_reference?: string;
+  subscriber_id?: string;
+  patient_name?: string;
+  patient_dob?: string;
+  subscriber_name?: string;
+  subscriber_dob?: string;
   effective_date?: string;
+  relationship_to_subscriber?: string;
+
+  // Eligibility & Plan Info
   patient_eligible?: boolean;
+  in_network?: boolean;
+  plan_type?: string;
+  fee_schedule?: string;
+  plan_group_name?: string;
+  group_number?: string;
+  claims_mailing_address?: string;
+  payor_id?: string;
+
+  // Waiting Periods
+  waiting_period_preventive?: string;
+  waiting_period_basic?: string;
+  waiting_period_major?: string;
+
+  // Clauses
+  missing_tooth_clause?: boolean;
+
+  // Benefit Maximums & Deductibles
+  annual_maximum?: number;
+  maximum_used?: number;
+  maximum_remaining?: number;
+  maximum_applies_to?: string;
+  deductible?: number;
+  deductible_met?: boolean;
+  deductible_amount_met?: number;
+  deductible_applies_to?: string;
+  ortho_maximum?: number;
+  ortho_maximum_used?: number;
+
+  // Coverage Percentages
+  coverage_diagnostic?: number;
+  coverage_preventive?: number;
+  coverage_basic?: number;
+  coverage_major?: number;
+  coverage_extractions?: number;
+  coverage_endodontics?: number;
+  coverage_periodontics?: number;
+
+  // Frequencies & History
+  frequency_bwx?: string;
+  history_bwx?: string;
+  frequency_pano?: string;
+  history_pano?: string;
+  frequency_fmx?: string;
+  history_fmx?: string;
+  frequency_exams?: string;
+  exams_share_frequency?: boolean;
+  history_exams?: string;
+  frequency_prophy?: string;
+  history_prophy?: string;
+
+  // Specific Procedure Codes
+  coverage_d4346?: number;
+  frequency_d4346?: string;
+  d4346_shares_with_d1110?: boolean;
+  fluoride_covered?: boolean;
+  fluoride_age_limit?: string;
+  coverage_d7210?: number;
+  coverage_d7140?: number;
+  coverage_d4910?: number;
+  frequency_d4910?: string;
+  frequency_srp?: string;
+
+  // Additional Coverage
+  implants_covered?: boolean;
+  implant_coverage_percentage?: number;
+  crowns_covered?: boolean;
+  crown_coverage_percentage?: number;
+  frequency_crowns?: string;
+
+  // Notes
+  notes?: string;
+
+  // Legacy field names (for backwards compatibility)
+  member_id?: string;
+  insurance_carrier?: string;
+  benefit_year?: string;
   remaining_maximum?: number;
   preventive_coverage?: number;
   basic_coverage?: number;
@@ -19,17 +102,12 @@ interface VapiStructuredResult {
   pano_frequency?: string;
   waiting_periods?: string;
   reference_number?: string;
-  rep_name?: string;
-  // Patient info (if captured by assistant)
-  patient_name?: string;
-  patient_dob?: string;
-  member_id?: string;
-  insurance_carrier?: string;
 }
 
 interface VapiToolOutput {
   name: string;
   result: VapiStructuredResult;
+  compliancePlan?: unknown;
 }
 
 interface VapiWebhookPayload {
@@ -49,10 +127,8 @@ interface VapiWebhookPayload {
       stereoRecordingUrl?: string;
       transcript?: string;
       messages?: Array<{ role: string; message: string }>;
-      // Structured outputs from Vapi - this is where the data actually comes
       structuredOutputs?: Record<string, VapiToolOutput>;
     };
-    // Analysis may contain structured data (legacy/alternative location)
     analysis?: {
       structuredData?: Record<string, VapiToolOutput>;
       summary?: string;
@@ -92,13 +168,13 @@ export async function POST(request: Request) {
         }
       }
 
-      // Extract patient info from system message if not in structured output
+      // Extract patient info - check structured output first, then system prompt
       let patientName = structuredResult.patient_name;
       let patientDOB = structuredResult.patient_dob;
-      let memberId = structuredResult.member_id;
-      let insuranceCarrier = structuredResult.insurance_carrier;
+      let memberId = structuredResult.subscriber_id || structuredResult.member_id;
+      let insuranceCarrier = structuredResult.insurance_company || structuredResult.insurance_carrier;
 
-      // Try to extract from the system prompt in messages
+      // Try to extract from the system prompt in messages if not in structured output
       if (!patientName && artifact?.messages) {
         const systemMessage = artifact.messages.find(m => m.role === "system");
         if (systemMessage?.message) {
@@ -117,9 +193,9 @@ export async function POST(request: Request) {
       if (call?.endedReason && !["customer-ended-call", "assistant-ended-call", "hangup"].includes(call.endedReason)) {
         status = "failed";
       }
-      if (!structuredResult.patient_eligible && structuredResult.patient_eligible !== false) {
-        // No eligibility data captured
-        status = structuredResult.patient_eligible === false ? "completed" : "failed";
+      if (structuredResult.patient_eligible === undefined && !structuredResult.annual_maximum) {
+        // No key data captured
+        status = "failed";
       }
 
       // Calculate duration string
@@ -130,27 +206,113 @@ export async function POST(request: Request) {
         callDuration = `${minutes} min ${seconds} sec`;
       }
 
-      // Build benefits object matching your UI
+      // Build comprehensive benefits object
       const benefits = {
+        // Eligibility
         eligible: structuredResult.patient_eligible,
         effectiveDate: structuredResult.effective_date,
+        inNetwork: structuredResult.in_network,
+
+        // Plan Info
         planType: structuredResult.plan_type,
-        benefitYear: structuredResult.benefit_year,
+        feeSchedule: structuredResult.fee_schedule,
+        planGroupName: structuredResult.plan_group_name,
+        groupNumber: structuredResult.group_number,
+        claimsMailingAddress: structuredResult.claims_mailing_address,
+        payorId: structuredResult.payor_id,
+
+        // Subscriber Info
+        subscriberName: structuredResult.subscriber_name,
+        subscriberDOB: structuredResult.subscriber_dob,
+        relationshipToSubscriber: structuredResult.relationship_to_subscriber,
+
+        // Maximums
         annualMaximum: structuredResult.annual_maximum,
-        remainingMaximum: structuredResult.remaining_maximum,
+        maximumUsed: structuredResult.maximum_used,
+        remainingMaximum: structuredResult.maximum_remaining || structuredResult.remaining_maximum,
+        maximumAppliesTo: structuredResult.maximum_applies_to,
+
+        // Deductible
         deductible: structuredResult.deductible,
         deductibleMet: structuredResult.deductible_met,
+        deductibleAmountMet: structuredResult.deductible_amount_met,
+        deductibleAppliesTo: structuredResult.deductible_applies_to,
+
+        // Ortho
+        orthoMaximum: structuredResult.ortho_maximum,
+        orthoMaximumUsed: structuredResult.ortho_maximum_used,
+
+        // Coverage Percentages
         coverage: {
-          preventive: structuredResult.preventive_coverage,
-          basic: structuredResult.basic_coverage,
-          major: structuredResult.major_coverage,
+          diagnostic: structuredResult.coverage_diagnostic,
+          preventive: structuredResult.coverage_preventive || structuredResult.preventive_coverage,
+          basic: structuredResult.coverage_basic || structuredResult.basic_coverage,
+          major: structuredResult.coverage_major || structuredResult.major_coverage,
+          extractions: structuredResult.coverage_extractions,
+          endodontics: structuredResult.coverage_endodontics,
+          periodontics: structuredResult.coverage_periodontics,
         },
+
+        // Waiting Periods
+        waitingPeriods: {
+          preventive: structuredResult.waiting_period_preventive,
+          basic: structuredResult.waiting_period_basic,
+          major: structuredResult.waiting_period_major,
+        },
+
+        // Clauses
+        missingToothClause: structuredResult.missing_tooth_clause,
+
+        // Frequencies
         frequencies: {
-          prophy: structuredResult.prophy_frequency,
-          bwx: structuredResult.bwx_frequency,
-          pano: structuredResult.pano_frequency,
+          prophy: structuredResult.frequency_prophy || structuredResult.prophy_frequency,
+          bwx: structuredResult.frequency_bwx || structuredResult.bwx_frequency,
+          pano: structuredResult.frequency_pano || structuredResult.pano_frequency,
+          fmx: structuredResult.frequency_fmx,
+          exams: structuredResult.frequency_exams,
+          examsShareFrequency: structuredResult.exams_share_frequency,
+          srp: structuredResult.frequency_srp,
+          d4910: structuredResult.frequency_d4910,
+          d4346: structuredResult.frequency_d4346,
+          crowns: structuredResult.frequency_crowns,
         },
-        waitingPeriods: structuredResult.waiting_periods,
+
+        // History (last dates)
+        history: {
+          prophy: structuredResult.history_prophy,
+          bwx: structuredResult.history_bwx,
+          pano: structuredResult.history_pano,
+          fmx: structuredResult.history_fmx,
+          exams: structuredResult.history_exams,
+        },
+
+        // Specific Codes
+        specificCodes: {
+          d4346Coverage: structuredResult.coverage_d4346,
+          d4346SharesWithD1110: structuredResult.d4346_shares_with_d1110,
+          d7210Coverage: structuredResult.coverage_d7210,
+          d7140Coverage: structuredResult.coverage_d7140,
+          d4910Coverage: structuredResult.coverage_d4910,
+        },
+
+        // Fluoride
+        fluoride: {
+          covered: structuredResult.fluoride_covered,
+          ageLimit: structuredResult.fluoride_age_limit,
+        },
+
+        // Additional Coverage
+        implants: {
+          covered: structuredResult.implants_covered,
+          coverage: structuredResult.implant_coverage_percentage,
+        },
+        crowns: {
+          covered: structuredResult.crowns_covered,
+          coverage: structuredResult.crown_coverage_percentage,
+        },
+
+        // Notes
+        notes: structuredResult.notes,
       };
 
       // Create verification record
@@ -165,7 +327,7 @@ export async function POST(request: Request) {
           recordingUrl: artifact?.recordingUrl || artifact?.stereoRecordingUrl || call?.recordingUrl,
           transcript: artifact?.transcript || call?.transcript,
           benefits: JSON.stringify(benefits),
-          referenceNumber: structuredResult.reference_number,
+          referenceNumber: structuredResult.call_reference || structuredResult.reference_number,
           repName: structuredResult.rep_name,
         },
       });
