@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Verification {
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now())
+  status           String   @default("in_progress") // "completed", "in_progress", "failed"
+
+  // Patient Info
+  patientName      String
+  patientDOB       String
+  memberId         String
+  insuranceCarrier String
+
+  // Call Info
+  callDuration     String?
+  recordingUrl     String?
+  transcript       String?
+
+  // Benefits (stored as JSON string)
+  benefits         String?
+
+  // Reference
+  referenceNumber  String?
+  repName          String?
+}
