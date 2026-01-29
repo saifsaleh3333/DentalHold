@@ -412,9 +412,9 @@ export default function VerificationResultsDetail() {
                 <span className="text-slate-500">FMX Frequency</span>
                 <span className="font-medium">{benefits?.frequencies?.fmx || "—"}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Exams Frequency</span>
-                <span className="font-medium">{benefits?.frequencies?.exams || "—"}</span>
+              <div className="text-sm">
+                <span className="text-slate-500 block">Exams Frequency</span>
+                <span className="font-medium text-slate-900 break-words">{benefits?.frequencies?.exams || "—"}</span>
               </div>
               {benefits?.frequencies?.examsShareFrequency !== undefined && (
                 <div className="flex justify-between text-sm">
