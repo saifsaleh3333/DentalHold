@@ -86,6 +86,14 @@ interface VapiStructuredResult {
   crown_coverage_percentage?: number;
   frequency_crowns?: string;
 
+  // Downgrade clauses
+  downgrade_crowns?: boolean;
+  downgrade_fillings?: boolean;
+
+  // Occlusal Guard
+  occlusal_guard_covered?: boolean;
+  occlusal_guard_coverage?: number;
+
   // Notes
   notes?: string;
 
@@ -262,6 +270,8 @@ export async function POST(request: Request) {
 
         // Clauses
         missingToothClause: structuredResult.missing_tooth_clause,
+        downgradeCrowns: structuredResult.downgrade_crowns,
+        downgradeFillings: structuredResult.downgrade_fillings,
 
         // Frequencies
         frequencies: {
@@ -309,6 +319,12 @@ export async function POST(request: Request) {
         crowns: {
           covered: structuredResult.crowns_covered,
           coverage: structuredResult.crown_coverage_percentage,
+        },
+
+        // Occlusal Guard
+        occlusialGuard: {
+          covered: structuredResult.occlusal_guard_covered,
+          coverage: structuredResult.occlusal_guard_coverage,
         },
 
         // Notes

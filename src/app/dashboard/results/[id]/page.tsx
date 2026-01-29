@@ -91,6 +91,8 @@ interface Benefits {
 
   // Clauses
   missingToothClause?: boolean;
+  downgradeCrowns?: boolean;
+  downgradeFillings?: boolean;
 
   // Additional Coverage
   fluoride?: {
@@ -102,6 +104,10 @@ interface Benefits {
     coverage?: number;
   };
   crowns?: {
+    covered?: boolean;
+    coverage?: number;
+  };
+  occlusialGuard?: {
     covered?: boolean;
     coverage?: number;
   };
@@ -124,6 +130,29 @@ interface Verification {
   benefits: Benefits | null;
   referenceNumber?: string;
   repName?: string;
+}
+
+// Helper component for table cells
+function Cell({ label, value, className = "" }: { label: string; value?: string | number | boolean | null; className?: string }) {
+  const displayValue = value === undefined || value === null ? "—" :
+    typeof value === "boolean" ? (value ? "Yes" : "No") :
+    String(value);
+
+  return (
+    <div className={`p-3 ${className}`}>
+      <p className="text-xs text-slate-500 mb-1">{label}</p>
+      <p className="font-medium text-slate-900">{displayValue}</p>
+    </div>
+  );
+}
+
+// Section header component
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="bg-slate-800 text-white px-4 py-2 font-semibold text-sm uppercase tracking-wide">
+      {title}
+    </div>
+  );
 }
 
 export default function VerificationResultsDetail() {
@@ -170,18 +199,9 @@ export default function VerificationResultsDetail() {
     });
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-  };
-
   if (loading) {
     return (
-      <div className="max-w-4xl py-12 text-center">
+      <div className="max-w-5xl py-12 text-center">
         <div className="animate-spin w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full mx-auto"></div>
         <p className="text-slate-500 mt-4">Loading verification...</p>
       </div>
@@ -190,7 +210,7 @@ export default function VerificationResultsDetail() {
 
   if (error || !verification) {
     return (
-      <div className="max-w-4xl py-12 text-center">
+      <div className="max-w-5xl py-12 text-center">
         <svg className="w-12 h-12 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -203,14 +223,18 @@ export default function VerificationResultsDetail() {
   }
 
   const benefits = verification.benefits;
-  const remainingPercent = benefits?.annualMaximum && benefits?.remainingMaximum
-    ? Math.round((benefits.remainingMaximum / benefits.annualMaximum) * 100)
-    : 0;
+
+  // Get waiting period values
+  const getWaitingPeriod = (type: 'preventive' | 'basic' | 'major') => {
+    if (!benefits?.waitingPeriods) return "—";
+    if (typeof benefits.waitingPeriods === 'string') return benefits.waitingPeriods;
+    return benefits.waitingPeriods[type] || "None";
+  };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-5xl">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <Link
           href="/dashboard/history"
           className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-medium mb-4"
@@ -223,8 +247,8 @@ export default function VerificationResultsDetail() {
 
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Verification Results</h1>
-            <p className="text-slate-600 mt-1">Completed on {formatDate(verification.createdAt)}</p>
+            <h1 className="text-2xl font-bold text-slate-900">Insurance Breakdown Sheet</h1>
+            <p className="text-slate-600 mt-1">Verified on {formatDate(verification.createdAt)}</p>
           </div>
           <div className="flex gap-3">
             <button className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
@@ -235,98 +259,414 @@ export default function VerificationResultsDetail() {
             </button>
             <button className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-              Share
+              Print
             </button>
           </div>
         </div>
       </div>
 
-      {/* Patient & Insurance Header Card */}
-      <div className="bg-gradient-to-r from-sky-500 to-cyan-500 rounded-xl p-6 mb-6 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="text-xl font-bold">{getInitials(verification.patientName)}</span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">{verification.patientName}</h2>
-              <p className="text-sky-100">
-                DOB: {verification.patientDOB || "N/A"} | Member ID: {verification.memberId || "N/A"}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-sky-100 text-sm">Insurance Carrier</p>
-            <p className="text-lg font-semibold">{verification.insuranceCarrier || "Unknown"}</p>
+      {/* Status Banner */}
+      {verification.status === "failed" && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-red-700 font-medium">Verification incomplete - some data may be missing</p>
           </div>
         </div>
+      )}
+
+      {/* Main Form Layout */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+
+        {/* Header Info Section */}
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          <Cell label="Company and #" value={verification.insuranceCarrier} className="border-r border-slate-200" />
+          <Cell label="Rep Name / Date" value={verification.repName ? `${verification.repName} / ${formatDate(verification.createdAt)}` : formatDate(verification.createdAt)} className="border-r border-slate-200" />
+          <Cell label="Subscriber ID" value={verification.memberId} />
+        </div>
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          <Cell label="Patient Name" value={verification.patientName} className="border-r border-slate-200" />
+          <Cell label="Subscriber Name" value={benefits?.subscriberName} className="border-r border-slate-200" />
+          <Cell label="Effective Date" value={benefits?.effectiveDate} />
+        </div>
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          <Cell label="Patient DOB" value={verification.patientDOB} className="border-r border-slate-200" />
+          <Cell label="Subscriber DOB" value={benefits?.subscriberDOB} className="border-r border-slate-200" />
+          <Cell label="Relationship to Subscriber" value={benefits?.relationshipToSubscriber} />
+        </div>
+
+        {/* Insurance Payer Information */}
+        <SectionHeader title="Insurance Payer Information" />
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          <Cell
+            label="IN or OUT of Network"
+            value={benefits?.inNetwork === undefined ? undefined : (benefits.inNetwork ? "In Network" : "Out of Network")}
+            className="border-r border-slate-200"
+          />
+          <Cell label="Plan Type" value={benefits?.planType} className="border-r border-slate-200" />
+          <Cell label="Fee Schedule" value={benefits?.feeSchedule} />
+        </div>
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          <Cell label="Plan/Group Name" value={benefits?.planGroupName} className="border-r border-slate-200" />
+          <Cell label="Group Number" value={benefits?.groupNumber} className="border-r border-slate-200" />
+          <div className="p-3">
+            <p className="text-xs text-slate-500 mb-1">Claims Mailing Address / Payor ID</p>
+            <p className="font-medium text-slate-900 text-sm">
+              {benefits?.claimsMailingAddress || benefits?.payorId || "—"}
+              {benefits?.claimsMailingAddress && benefits?.payorId && (
+                <span className="text-slate-500"> | Payor ID: {benefits.payorId}</span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Waiting Periods */}
+        <SectionHeader title="Waiting Periods" />
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          <Cell label="Preventive" value={getWaitingPeriod('preventive')} className="border-r border-slate-200" />
+          <Cell label="Basic" value={getWaitingPeriod('basic')} className="border-r border-slate-200" />
+          <Cell label="Major" value={getWaitingPeriod('major')} />
+        </div>
+
+        {/* Missing Tooth Clause */}
+        <div className="grid grid-cols-1 border-b border-slate-200 bg-slate-50">
+          <div className="p-3 flex items-center justify-between">
+            <span className="font-semibold text-slate-700">IS THERE A MISSING TOOTH CLAUSE?</span>
+            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+              benefits?.missingToothClause === true ? 'bg-amber-100 text-amber-700' :
+              benefits?.missingToothClause === false ? 'bg-green-100 text-green-700' :
+              'bg-slate-200 text-slate-600'
+            }`}>
+              {benefits?.missingToothClause === true ? 'YES' : benefits?.missingToothClause === false ? 'NO' : '—'}
+            </span>
+          </div>
+        </div>
+
+        {/* Benefit Details */}
+        <SectionHeader title="Benefit Details" />
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          <div className="border-r border-slate-200">
+            <Cell label="General Maximum" value={benefits?.annualMaximum ? `$${benefits.annualMaximum.toLocaleString()}` : undefined} />
+            <Cell label="Maximum Used" value={benefits?.maximumUsed !== undefined ? `$${benefits.maximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
+            <div className="p-3 border-t border-slate-200">
+              <p className="text-xs text-slate-500 mb-1">Maximum Applies to:</p>
+              <p className="font-medium text-slate-900">{benefits?.maximumAppliesTo || "Prev / Basic / Major"}</p>
+            </div>
+          </div>
+          <div className="border-r border-slate-200">
+            <Cell label="Deductible" value={benefits?.deductible !== undefined ? `$${benefits.deductible}` : undefined} />
+            <Cell
+              label="Deductible Met"
+              value={
+                benefits?.deductibleMet === true ? "Yes" :
+                benefits?.deductibleMet === false ? "No" :
+                benefits?.deductibleAmountMet !== undefined ? `$${benefits.deductibleAmountMet} met` :
+                undefined
+              }
+              className="border-t border-slate-200"
+            />
+            <div className="p-3 border-t border-slate-200">
+              <p className="text-xs text-slate-500 mb-1">Deductible Applies to:</p>
+              <p className="font-medium text-slate-900">{benefits?.deductibleAppliesTo || "Prev / Basic / Major"}</p>
+            </div>
+          </div>
+          <div>
+            <Cell label="Ortho Maximum" value={benefits?.orthoMaximum ? `$${benefits.orthoMaximum.toLocaleString()}` : undefined} />
+            <Cell label="Ortho Max. Used" value={benefits?.orthoMaximumUsed !== undefined ? `$${benefits.orthoMaximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
+          </div>
+        </div>
+
+        {/* Coverage Percentages */}
+        <SectionHeader title="Coverage Percentages" />
+
+        {/* Row 1: Diagnostic, Preventive, Basic */}
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          {/* Diagnostic Column */}
+          <div className="border-r border-slate-200 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Diagnostic</p>
+              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.diagnostic !== undefined ? `${benefits.coverage.diagnostic}%` : "—"}</p>
+            </div>
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Frequency of BWXs</span>
+                <span className="font-medium">{benefits?.frequencies?.bwx || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">BWX History</span>
+                <span className="font-medium">{benefits?.history?.bwx || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Pano Frequency</span>
+                <span className="font-medium">{benefits?.frequencies?.pano || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Pano History</span>
+                <span className="font-medium">{benefits?.history?.pano || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">FMX Frequency</span>
+                <span className="font-medium">{benefits?.frequencies?.fmx || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Exams Frequency</span>
+                <span className="font-medium">{benefits?.frequencies?.exams || "—"}</span>
+              </div>
+              {benefits?.frequencies?.examsShareFrequency !== undefined && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Exams Share Freq?</span>
+                  <span className="font-medium">{benefits.frequencies.examsShareFrequency ? "Yes" : "No"}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Preventive Column */}
+          <div className="border-r border-slate-200 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Preventive</p>
+              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.preventive !== undefined ? `${benefits.coverage.preventive}%` : "—"}</p>
+            </div>
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">D1110 Frequency</span>
+                <span className="font-medium">{benefits?.frequencies?.prophy || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">D1110 History</span>
+                <span className="font-medium">{benefits?.history?.prophy || "—"}</span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">D4346 Coverage</span>
+                  <span className="font-medium">{benefits?.specificCodes?.d4346Coverage !== undefined ? `${benefits.specificCodes.d4346Coverage}%` : "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-slate-500">D4346 shares w/ D1110?</span>
+                  <span className="font-medium">{benefits?.specificCodes?.d4346SharesWithD1110 !== undefined ? (benefits.specificCodes.d4346SharesWithD1110 ? "Yes" : "No") : "—"}</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Fluoride D1208</span>
+                  <span className="font-medium">{benefits?.fluoride?.covered !== undefined ? (benefits.fluoride.covered ? "Yes" : "No") : "—"}</span>
+                </div>
+                {benefits?.fluoride?.ageLimit && (
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-slate-500">Age Limit</span>
+                    <span className="font-medium">{benefits.fluoride.ageLimit}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Column */}
+          <div className="p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Basic</p>
+              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.basic !== undefined ? `${benefits.coverage.basic}%` : "—"}</p>
+            </div>
+            <div className="pt-3 border-t border-slate-100">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Downgrade fillings?</span>
+                <span className="font-medium">{benefits?.downgradeFillings !== undefined ? (benefits.downgradeFillings ? "Yes" : "No") : "—"}</span>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <p className="text-sm font-semibold text-slate-700">Endodontics</p>
+              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.endodontics !== undefined ? `${benefits.coverage.endodontics}%` : "—"}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Major, Extractions, Periodontics */}
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          {/* Major Column */}
+          <div className="border-r border-slate-200 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Major</p>
+              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.major !== undefined ? `${benefits.coverage.major}%` : "—"}</p>
+            </div>
+            <div className="pt-3 border-t border-slate-100">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Downgrade crowns?</span>
+                <span className="font-medium">{benefits?.downgradeCrowns !== undefined ? (benefits.downgradeCrowns ? "Yes" : "No") : "—"}</span>
+              </div>
+              {benefits?.frequencies?.crowns && (
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-slate-500">Crown Frequency</span>
+                  <span className="font-medium">{benefits.frequencies.crowns}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Extractions Column */}
+          <div className="border-r border-slate-200 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Extractions</p>
+              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.extractions !== undefined ? `${benefits.coverage.extractions}%` : "—"}</p>
+            </div>
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">D7210 (Surgical)</span>
+                <span className="font-medium">{benefits?.specificCodes?.d7210Coverage !== undefined ? `${benefits.specificCodes.d7210Coverage}%` : "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">D7140 (Simple)</span>
+                <span className="font-medium">{benefits?.specificCodes?.d7140Coverage !== undefined ? `${benefits.specificCodes.d7140Coverage}%` : "—"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Periodontics Column */}
+          <div className="p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Periodontics</p>
+              <p className="text-2xl font-bold text-slate-900">{benefits?.coverage?.periodontics !== undefined ? `${benefits.coverage.periodontics}%` : "—"}</p>
+            </div>
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">D4910 Coverage</span>
+                <span className="font-medium">{benefits?.specificCodes?.d4910Coverage !== undefined ? `${benefits.specificCodes.d4910Coverage}%` : "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">D4910 Frequency</span>
+                <span className="font-medium">{benefits?.frequencies?.d4910 || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">SRP (D4341/D4342)</span>
+                <span className="font-medium">{benefits?.frequencies?.srp || "—"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Implants, Occlusal Guard */}
+        <div className="grid grid-cols-3 border-b border-slate-200">
+          {/* Implants Column */}
+          <div className="border-r border-slate-200 p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <p className="text-sm font-semibold text-slate-700">Implants Covered?</p>
+              <span className={`px-2 py-0.5 rounded text-sm font-semibold ${
+                benefits?.implants?.covered ? 'bg-green-100 text-green-700' :
+                benefits?.implants?.covered === false ? 'bg-red-100 text-red-700' :
+                'bg-slate-100 text-slate-600'
+              }`}>
+                {benefits?.implants?.covered !== undefined ? (benefits.implants.covered ? "Yes" : "No") : "—"}
+              </span>
+            </div>
+            {benefits?.implants?.coverage !== undefined && (
+              <div className="pt-3 border-t border-slate-100">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Coverage</span>
+                  <span className="font-medium">{benefits.implants.coverage}%</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Occlusal Guard Column */}
+          <div className="border-r border-slate-200 p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <p className="text-sm font-semibold text-slate-700">Occlusal Guard (D9944)</p>
+              <span className={`px-2 py-0.5 rounded text-sm font-semibold ${
+                benefits?.occlusialGuard?.covered ? 'bg-green-100 text-green-700' :
+                benefits?.occlusialGuard?.covered === false ? 'bg-red-100 text-red-700' :
+                'bg-slate-100 text-slate-600'
+              }`}>
+                {benefits?.occlusialGuard?.covered !== undefined ? (benefits.occlusialGuard.covered ? "Yes" : "No") : "—"}
+              </span>
+            </div>
+            {benefits?.occlusialGuard?.coverage !== undefined && (
+              <div className="pt-3 border-t border-slate-100">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Coverage</span>
+                  <span className="font-medium">{benefits.occlusialGuard.coverage}%</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Call Reference */}
+          <div className="p-4 space-y-2">
+            <p className="text-sm font-semibold text-slate-700">Call Reference</p>
+            {verification.referenceNumber && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Ref #</span>
+                <span className="font-mono font-medium">{verification.referenceNumber}</span>
+              </div>
+            )}
+            {verification.callDuration && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Duration</span>
+                <span className="font-medium">{verification.callDuration}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Notes Section */}
+        {benefits?.notes && (
+          <>
+            <SectionHeader title="Notes" />
+            <div className="p-4">
+              <p className="text-slate-700 whitespace-pre-wrap">{benefits.notes}</p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Call Recording Section */}
-      {(verification.recordingUrl || verification.transcript || verification.callDuration) && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-slate-900">Call Recording</h3>
-                <p className="text-sm text-slate-500">Duration: {verification.callDuration || "N/A"}</p>
-              </div>
-            </div>
+      {(verification.recordingUrl || verification.transcript) && (
+        <div className="mt-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-slate-800 text-white px-4 py-2 font-semibold text-sm uppercase tracking-wide flex items-center justify-between">
+            <span>Call Recording</span>
             {verification.recordingUrl && (
               <a
                 href={verification.recordingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sky-600 hover:text-sky-700 text-sm font-medium transition-colors"
+                className="text-sky-300 hover:text-sky-200 text-xs font-normal"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
                 Download
               </a>
             )}
           </div>
 
-          {/* Audio Player */}
           {verification.recordingUrl && (
-            <div className="bg-slate-50 rounded-lg p-4 mb-4">
+            <div className="p-4 border-b border-slate-200">
               <audio controls className="w-full" src={verification.recordingUrl}>
                 Your browser does not support the audio element.
               </audio>
             </div>
           )}
 
-          {/* Transcript Toggle */}
           {verification.transcript && (
             <div>
               <button
                 onClick={() => setShowTranscript(!showTranscript)}
-                className="inline-flex items-center gap-2 text-slate-700 hover:text-slate-900 font-medium transition-colors"
+                className="w-full px-4 py-3 flex items-center justify-between text-slate-700 hover:bg-slate-50 transition-colors"
               >
+                <span className="font-medium">{showTranscript ? "Hide Transcript" : "View Transcript"}</span>
                 <svg
-                  className={`w-4 h-4 transition-transform ${showTranscript ? "rotate-90" : ""}`}
+                  className={`w-5 h-5 transition-transform ${showTranscript ? "rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-                {showTranscript ? "Hide Transcript" : "View Transcript"}
               </button>
 
               {showTranscript && (
-                <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
-                    <p className="text-sm font-medium text-slate-600">Call Transcript</p>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto p-4">
+                <div className="px-4 pb-4">
+                  <div className="max-h-96 overflow-y-auto bg-slate-50 rounded-lg p-4">
                     <p className="text-sm text-slate-700 whitespace-pre-wrap">{verification.transcript}</p>
                   </div>
                 </div>
@@ -336,554 +676,8 @@ export default function VerificationResultsDetail() {
         </div>
       )}
 
-      {/* Status Message for Failed/In-Progress */}
-      {verification.status === "failed" && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
-          <div className="flex items-center gap-3">
-            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <h3 className="font-semibold text-red-800">Verification Failed</h3>
-              <p className="text-sm text-red-600">Unable to complete verification. The call may have been disconnected or the information could not be confirmed.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {verification.status === "in_progress" && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-            <div>
-              <h3 className="font-semibold text-amber-800">Verification In Progress</h3>
-              <p className="text-sm text-amber-600">We&apos;re currently on hold with the insurance company. Results will appear here once complete.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Results Grid - only show if we have benefits data */}
-      {benefits && (
-        <div className="grid grid-cols-2 gap-6">
-          {/* Eligibility Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Eligibility Status</h3>
-            <div className="flex items-center gap-3">
-              {benefits.eligible === true ? (
-                <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-700 text-lg font-semibold rounded-full">
-                  <svg className="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Active
-                </span>
-              ) : benefits.eligible === false ? (
-                <span className="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 text-lg font-semibold rounded-full">
-                  <svg className="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Inactive
-                </span>
-              ) : (
-                <span className="inline-flex items-center px-3 py-1.5 bg-slate-100 text-slate-700 text-lg font-semibold rounded-full">
-                  Unknown
-                </span>
-              )}
-            </div>
-            {benefits.effectiveDate && (
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Effective Date</span>
-                  <span className="font-medium text-slate-900">{benefits.effectiveDate}</span>
-                </div>
-              </div>
-            )}
-            {benefits.planType && (
-              <div className="mt-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Plan Type</span>
-                  <span className="font-medium text-slate-900">{benefits.planType}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Annual Maximum Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Annual Maximum</h3>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-bold text-slate-900">
-                {benefits.annualMaximum ? `$${benefits.annualMaximum.toLocaleString()}` : "N/A"}
-              </span>
-              {benefits.annualMaximum && <span className="text-slate-500 mb-1">/ year</span>}
-            </div>
-            {benefits.remainingMaximum !== undefined && benefits.annualMaximum && (
-              <div className="mt-4">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-500">Remaining</span>
-                  <span className="font-medium text-green-600">${benefits.remainingMaximum.toLocaleString()}</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: `${remainingPercent}%` }}></div>
-                </div>
-              </div>
-            )}
-            {benefits.maximumAppliesTo && (
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Applies To</span>
-                  <span className="font-medium text-slate-900">{benefits.maximumAppliesTo}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Deductible Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Deductible</h3>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-bold text-slate-900">
-                {benefits.deductible !== undefined ? `$${benefits.deductible}` : "N/A"}
-              </span>
-              {benefits.deductibleMet !== undefined && (
-                benefits.deductibleMet === true ? (
-                  <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
-                    Met
-                  </span>
-                ) : benefits.deductibleMet === false ? (
-                  <span className="inline-flex items-center px-2.5 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">
-                    Not Met
-                  </span>
-                ) : benefits.deductibleAmountMet !== undefined ? (
-                  <span className="inline-flex items-center px-2.5 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">
-                    ${benefits.deductibleAmountMet} of ${benefits.deductible}
-                  </span>
-                ) : null
-              )}
-            </div>
-            {benefits.deductibleAppliesTo && (
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Applies To</span>
-                  <span className="font-medium text-slate-900">{benefits.deductibleAppliesTo}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Coverage Breakdown Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Coverage Breakdown</h3>
-            <div className="space-y-3">
-              {benefits.coverage?.diagnostic !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-700">Diagnostic</span>
-                  <span className="text-lg font-semibold text-slate-900">{benefits.coverage.diagnostic}%</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-slate-700">Preventive</span>
-                <span className="text-lg font-semibold text-slate-900">
-                  {benefits.coverage?.preventive !== undefined ? `${benefits.coverage.preventive}%` : "N/A"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-700">Basic</span>
-                <span className="text-lg font-semibold text-slate-900">
-                  {benefits.coverage?.basic !== undefined ? `${benefits.coverage.basic}%` : "N/A"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-700">Major</span>
-                <span className="text-lg font-semibold text-slate-900">
-                  {benefits.coverage?.major !== undefined ? `${benefits.coverage.major}%` : "N/A"}
-                </span>
-              </div>
-              {benefits.coverage?.endodontics !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-700">Endodontics</span>
-                  <span className="text-lg font-semibold text-slate-900">{benefits.coverage.endodontics}%</span>
-                </div>
-              )}
-              {benefits.coverage?.periodontics !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-700">Periodontics</span>
-                  <span className="text-lg font-semibold text-slate-900">{benefits.coverage.periodontics}%</span>
-                </div>
-              )}
-              {benefits.coverage?.extractions !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-700">Extractions</span>
-                  <span className="text-lg font-semibold text-slate-900">{benefits.coverage.extractions}%</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Frequencies Card */}
-          {(benefits.frequencies?.prophy || benefits.frequencies?.bwx || benefits.frequencies?.pano || benefits.frequencies?.fmx || benefits.frequencies?.exams || benefits.frequencies?.srp) && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 col-span-2">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Frequencies & Limitations</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {benefits.frequencies?.prophy && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">Prophylaxis (D1110)</p>
-                    <p className="font-semibold text-slate-900">{benefits.frequencies.prophy}</p>
-                    {benefits.history?.prophy && <p className="text-xs text-slate-400 mt-1">Last: {benefits.history.prophy}</p>}
-                  </div>
-                )}
-                {benefits.frequencies?.bwx && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">Bitewing X-rays</p>
-                    <p className="font-semibold text-slate-900">{benefits.frequencies.bwx}</p>
-                    {benefits.history?.bwx && <p className="text-xs text-slate-400 mt-1">Last: {benefits.history.bwx}</p>}
-                  </div>
-                )}
-                {benefits.frequencies?.pano && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">Panoramic X-ray</p>
-                    <p className="font-semibold text-slate-900">{benefits.frequencies.pano}</p>
-                    {benefits.history?.pano && <p className="text-xs text-slate-400 mt-1">Last: {benefits.history.pano}</p>}
-                  </div>
-                )}
-                {benefits.frequencies?.fmx && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">Full Mouth X-rays</p>
-                    <p className="font-semibold text-slate-900">{benefits.frequencies.fmx}</p>
-                    {benefits.history?.fmx && <p className="text-xs text-slate-400 mt-1">Last: {benefits.history.fmx}</p>}
-                  </div>
-                )}
-                {benefits.frequencies?.exams && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">Exams</p>
-                    <p className="font-semibold text-slate-900">{benefits.frequencies.exams}</p>
-                    {benefits.frequencies.examsShareFrequency !== undefined && (
-                      <p className="text-xs text-slate-400 mt-1">
-                        {benefits.frequencies.examsShareFrequency ? 'Comprehensive & periodic share frequency' : 'Separate exam frequencies'}
-                      </p>
-                    )}
-                    {benefits.history?.exams && <p className="text-xs text-slate-400 mt-1">Last: {benefits.history.exams}</p>}
-                  </div>
-                )}
-                {benefits.frequencies?.srp && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">SRP (D4341/D4342)</p>
-                    <p className="font-semibold text-slate-900">{benefits.frequencies.srp}</p>
-                  </div>
-                )}
-                {benefits.frequencies?.d4910 && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">Perio Maintenance (D4910)</p>
-                    <p className="font-semibold text-slate-900">{benefits.frequencies.d4910}</p>
-                  </div>
-                )}
-                {benefits.frequencies?.crowns && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">Crown Replacement</p>
-                    <p className="font-semibold text-slate-900">{benefits.frequencies.crowns}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Specific Procedure Codes Card */}
-          {benefits.specificCodes && (benefits.specificCodes.d4346Coverage !== undefined || benefits.specificCodes.d7210Coverage !== undefined || benefits.specificCodes.d7140Coverage !== undefined || benefits.specificCodes.d4910Coverage !== undefined) && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 col-span-2">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Specific Procedure Codes</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {benefits.specificCodes.d4346Coverage !== undefined && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">D4346 (Gingivitis)</p>
-                    <p className="font-semibold text-slate-900">{benefits.specificCodes.d4346Coverage}%</p>
-                    {benefits.specificCodes.d4346SharesWithD1110 !== undefined && (
-                      <p className="text-xs text-slate-400 mt-1">
-                        {benefits.specificCodes.d4346SharesWithD1110 ? 'Shares frequency with D1110' : 'Separate frequency'}
-                      </p>
-                    )}
-                    {benefits.frequencies?.d4346 && (
-                      <p className="text-xs text-slate-400 mt-1">Frequency: {benefits.frequencies.d4346}</p>
-                    )}
-                  </div>
-                )}
-                {benefits.specificCodes.d7210Coverage !== undefined && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">D7210 (Surgical Extraction)</p>
-                    <p className="font-semibold text-slate-900">{benefits.specificCodes.d7210Coverage}%</p>
-                  </div>
-                )}
-                {benefits.specificCodes.d7140Coverage !== undefined && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">D7140 (Simple Extraction)</p>
-                    <p className="font-semibold text-slate-900">{benefits.specificCodes.d7140Coverage}%</p>
-                  </div>
-                )}
-                {benefits.specificCodes.d4910Coverage !== undefined && (
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">D4910 (Perio Maintenance)</p>
-                    <p className="font-semibold text-slate-900">{benefits.specificCodes.d4910Coverage}%</p>
-                    {benefits.frequencies?.d4910 && (
-                      <p className="text-xs text-slate-400 mt-1">Frequency: {benefits.frequencies.d4910}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Waiting Periods Card */}
-          {benefits.waitingPeriods !== undefined && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Waiting Periods</h3>
-              {(() => {
-                // Handle object format
-                if (typeof benefits.waitingPeriods === 'object') {
-                  const wp = benefits.waitingPeriods;
-                  const hasWaitingPeriods = wp.preventive || wp.basic || wp.major;
-                  if (!hasWaitingPeriods) {
-                    return (
-                      <>
-                        <div className="flex items-center gap-3">
-                          <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-700 font-medium rounded-full">
-                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            None
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-500 mt-3">All services covered immediately</p>
-                      </>
-                    );
-                  }
-                  return (
-                    <div className="space-y-2">
-                      {wp.preventive && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Preventive</span>
-                          <span className="font-medium text-slate-900">{wp.preventive}</span>
-                        </div>
-                      )}
-                      {wp.basic && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Basic</span>
-                          <span className="font-medium text-slate-900">{wp.basic}</span>
-                        </div>
-                      )}
-                      {wp.major && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Major</span>
-                          <span className="font-medium text-slate-900">{wp.major}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-                // Handle string format (legacy)
-                if (benefits.waitingPeriods === "None" || benefits.waitingPeriods === "none" || !benefits.waitingPeriods) {
-                  return (
-                    <>
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-700 font-medium rounded-full">
-                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          None
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-500 mt-3">All services covered immediately</p>
-                    </>
-                  );
-                }
-                return <p className="text-slate-700">{benefits.waitingPeriods}</p>;
-              })()}
-            </div>
-          )}
-
-          {/* Plan Info Card */}
-          {(benefits.inNetwork !== undefined || benefits.groupNumber || benefits.payorId || benefits.feeSchedule || benefits.planGroupName || benefits.claimsMailingAddress) && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Plan Information</h3>
-              <div className="space-y-3">
-                {benefits.inNetwork !== undefined && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">In Network</span>
-                    <span className={`font-medium ${benefits.inNetwork ? 'text-green-600' : 'text-amber-600'}`}>
-                      {benefits.inNetwork ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                )}
-                {benefits.planGroupName && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Plan/Group Name</span>
-                    <span className="font-medium text-slate-900">{benefits.planGroupName}</span>
-                  </div>
-                )}
-                {benefits.groupNumber && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Group Number</span>
-                    <span className="font-medium text-slate-900">{benefits.groupNumber}</span>
-                  </div>
-                )}
-                {benefits.payorId && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Payor ID</span>
-                    <span className="font-medium text-slate-900">{benefits.payorId}</span>
-                  </div>
-                )}
-                {benefits.feeSchedule && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Fee Schedule</span>
-                    <span className="font-medium text-slate-900">{benefits.feeSchedule}</span>
-                  </div>
-                )}
-                {benefits.claimsMailingAddress && (
-                  <div className="text-sm">
-                    <span className="text-slate-500 block mb-1">Claims Mailing Address</span>
-                    <span className="font-medium text-slate-900 whitespace-pre-line">{benefits.claimsMailingAddress}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Subscriber Info Card */}
-          {(benefits.subscriberName || benefits.subscriberDOB || benefits.relationshipToSubscriber) && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Subscriber Information</h3>
-              <div className="space-y-3">
-                {benefits.subscriberName && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Subscriber Name</span>
-                    <span className="font-medium text-slate-900">{benefits.subscriberName}</span>
-                  </div>
-                )}
-                {benefits.subscriberDOB && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Subscriber DOB</span>
-                    <span className="font-medium text-slate-900">{benefits.subscriberDOB}</span>
-                  </div>
-                )}
-                {benefits.relationshipToSubscriber && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Relationship</span>
-                    <span className="font-medium text-slate-900">{benefits.relationshipToSubscriber}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Missing Tooth & Clauses Card */}
-          {benefits.missingToothClause !== undefined && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Clauses</h3>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-700">Missing Tooth Clause</span>
-                <span className={`inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-full ${benefits.missingToothClause ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                  {benefits.missingToothClause ? 'Yes' : 'No'}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Ortho Card */}
-          {(benefits.orthoMaximum !== undefined) && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Orthodontics</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Lifetime Maximum</span>
-                  <span className="font-medium text-slate-900">${benefits.orthoMaximum?.toLocaleString()}</span>
-                </div>
-                {benefits.orthoMaximumUsed !== undefined && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Used</span>
-                    <span className="font-medium text-slate-900">${benefits.orthoMaximumUsed?.toLocaleString()}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Additional Coverage Card */}
-          {(benefits.fluoride?.covered !== undefined || benefits.implants?.covered !== undefined || benefits.crowns?.covered !== undefined) && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Additional Coverage</h3>
-              <div className="space-y-3">
-                {benefits.fluoride?.covered !== undefined && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-700">Fluoride (D1208)</span>
-                    <div className="text-right">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-full ${benefits.fluoride.covered ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {benefits.fluoride.covered ? 'Covered' : 'Not Covered'}
-                      </span>
-                      {benefits.fluoride.ageLimit && <p className="text-xs text-slate-500 mt-1">Age limit: {benefits.fluoride.ageLimit}</p>}
-                    </div>
-                  </div>
-                )}
-                {benefits.implants?.covered !== undefined && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-700">Implants</span>
-                    <div className="text-right">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-full ${benefits.implants.covered ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {benefits.implants.covered ? (benefits.implants.coverage ? `${benefits.implants.coverage}%` : 'Covered') : 'Not Covered'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {benefits.crowns?.covered !== undefined && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-700">Crowns</span>
-                    <div className="text-right">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-full ${benefits.crowns.covered ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {benefits.crowns.covered ? (benefits.crowns.coverage ? `${benefits.crowns.coverage}%` : 'Covered') : 'Not Covered'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Reference Card */}
-          {(verification.referenceNumber || verification.repName || verification.callDuration) && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Call Reference</h3>
-              <div className="space-y-3">
-                {verification.referenceNumber && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Reference #</span>
-                    <span className="font-mono font-medium text-slate-900">{verification.referenceNumber}</span>
-                  </div>
-                )}
-                {verification.repName && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Representative</span>
-                    <span className="font-medium text-slate-900">{verification.repName}</span>
-                  </div>
-                )}
-                {verification.callDuration && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Call Duration</span>
-                    <span className="font-medium text-slate-900">{verification.callDuration}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Notes Card */}
-          {benefits.notes && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 col-span-2">
-              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-4">Notes</h3>
-              <p className="text-slate-700 whitespace-pre-wrap">{benefits.notes}</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Actions */}
-      <div className="mt-8 flex gap-4">
+      <div className="mt-6 flex gap-4">
         <Link
           href="/dashboard/new"
           className="inline-flex items-center gap-2 px-6 py-3 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition-colors"
@@ -893,12 +687,6 @@ export default function VerificationResultsDetail() {
           </svg>
           New Verification
         </Link>
-        <button className="inline-flex items-center gap-2 px-6 py-3 border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          Print Results
-        </button>
       </div>
     </div>
   );
