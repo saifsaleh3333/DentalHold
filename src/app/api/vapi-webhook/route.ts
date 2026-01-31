@@ -148,6 +148,10 @@ interface VapiWebhookPayload {
       transcript?: string;
       stereoRecordingUrl?: string;
       duration?: number;
+      metadata?: {
+        practiceId?: string;
+        [key: string]: unknown;
+      };
     };
     artifact?: {
       recordingUrl?: string;
@@ -176,6 +180,9 @@ export async function POST(request: Request) {
       const call = payload.message.call;
       const artifact = payload.message.artifact;
       const analysis = payload.message.analysis;
+
+      // Extract practiceId from call metadata (set when calls are triggered)
+      const practiceId = call?.metadata?.practiceId || null;
 
       // Extract structured data - check artifact.structuredOutputs first, then analysis.structuredData
       let structuredResult: VapiStructuredResult = {};
@@ -373,6 +380,7 @@ export async function POST(request: Request) {
           benefits: JSON.stringify(benefits),
           referenceNumber: structuredResult.call_reference || structuredResult.reference_number,
           repName: structuredResult.rep_name,
+          practiceId,
         },
       });
 

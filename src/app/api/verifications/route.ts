@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export async function GET() {
   try {
+    const session = await auth();
+    if (!session?.user?.practiceId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const verifications = await prisma.verification.findMany({
+      where: { practiceId: session.user.practiceId },
       orderBy: {
         createdAt: "desc",
       },
@@ -27,6 +34,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.practiceId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const verification = await prisma.verification.create({
@@ -42,6 +54,8 @@ export async function POST(request: Request) {
         benefits: body.benefits ? JSON.stringify(body.benefits) : null,
         referenceNumber: body.referenceNumber,
         repName: body.repName,
+        practiceId: session.user.practiceId,
+        createdById: session.user.id,
       },
     });
 

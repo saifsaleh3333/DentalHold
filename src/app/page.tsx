@@ -63,12 +63,20 @@ export default function Home() {
             </div>
             <span className="text-xl font-bold text-slate-900">DentalHold</span>
           </div>
-          <a
-            href="#early-access"
-            className="hidden sm:inline-flex items-center px-4 py-2 bg-sky-500 text-white text-sm font-medium rounded-lg hover:bg-sky-600 transition-colors"
-          >
-            Get Early Access
-          </a>
+          <div className="hidden sm:flex items-center gap-3">
+            <a
+              href="/login"
+              className="inline-flex items-center px-4 py-2 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              Login
+            </a>
+            <a
+              href="#early-access"
+              className="inline-flex items-center px-4 py-2 bg-sky-500 text-white text-sm font-medium rounded-lg hover:bg-sky-600 transition-colors"
+            >
+              Get Early Access
+            </a>
+          </div>
         </div>
       </nav>
 

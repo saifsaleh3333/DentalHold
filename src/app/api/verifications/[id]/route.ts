@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.practiceId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
 
-    const verification = await prisma.verification.findUnique({
-      where: { id },
+    const verification = await prisma.verification.findFirst({
+      where: { id, practiceId: session.user.practiceId },
     });
 
     if (!verification) {
@@ -37,8 +43,25 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.practiceId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
+
+    // Verify the record belongs to this practice
+    const existing = await prisma.verification.findFirst({
+      where: { id, practiceId: session.user.practiceId },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Verification not found" },
+        { status: 404 }
+      );
+    }
 
     const verification = await prisma.verification.update({
       where: { id },
@@ -66,7 +89,24 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.practiceId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
+
+    // Verify the record belongs to this practice
+    const existing = await prisma.verification.findFirst({
+      where: { id, practiceId: session.user.practiceId },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Verification not found" },
+        { status: 404 }
+      );
+    }
 
     await prisma.verification.delete({
       where: { id },
