@@ -254,6 +254,25 @@ export default function VerificationResultsDetail() {
     }
   }, [params.id]);
 
+  // Auto-poll while call is in progress
+  useEffect(() => {
+    if (!verification || verification.status !== "in_progress") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/verifications/${params.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setVerification(data);
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [verification?.status, params.id]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "long",
@@ -339,28 +358,63 @@ export default function VerificationResultsDetail() {
           Back to History
         </Link>
 
+        {verification.status === "in_progress" && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-amber-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-amber-800">Verification Call in Progress</h2>
+                <p className="text-amber-700 mt-1">
+                  Dani is currently on the phone with {verification.insuranceCarrier || "the insurance company"}.
+                  This page will automatically update when the call completes.
+                </p>
+                <p className="text-amber-600 text-sm mt-2">
+                  Insurance hold times can be 15-45 minutes. Feel free to leave this page open or check back later.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-2 text-amber-600">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              <span className="text-sm font-medium">Auto-refreshing every 5 seconds...</span>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Insurance Breakdown Sheet</h1>
-            <p className="text-slate-600 mt-1">Verified on {formatDate(verification.createdAt)}</p>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {verification.status === "in_progress" ? "Verification In Progress" : "Insurance Breakdown Sheet"}
+            </h1>
+            <p className="text-slate-600 mt-1">
+              {verification.status === "in_progress"
+                ? `Started on ${formatDate(verification.createdAt)}`
+                : `Verified on ${formatDate(verification.createdAt)}`}
+            </p>
           </div>
-          <div className="flex gap-3">
-            <button className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Export PDF
-            </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              Print
-            </button>
-          </div>
+          {verification.status !== "in_progress" && (
+            <div className="flex gap-3">
+              <button className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export PDF
+              </button>
+              <button className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
+      {verification.status !== "in_progress" && (<>
       {/* Status Banner */}
       {verification.status === "failed" && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -728,6 +782,8 @@ export default function VerificationResultsDetail() {
           )}
         </div>
       )}
+
+      </>)}
 
       {/* Actions */}
       <div className="mt-6 flex gap-4">

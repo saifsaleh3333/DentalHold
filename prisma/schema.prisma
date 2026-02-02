@@ -89,6 +89,8 @@ model Verification {
   insuranceCarrier String
 
   // Call Info
+  callId           String?
+  phoneNumber      String?
   callDuration     String?
   recordingUrl     String?
   transcript       String?

@@ -150,6 +150,7 @@ interface VapiWebhookPayload {
       duration?: number;
       metadata?: {
         practiceId?: string;
+        verificationId?: string;
         [key: string]: unknown;
       };
     };
@@ -181,8 +182,9 @@ export async function POST(request: Request) {
       const artifact = payload.message.artifact;
       const analysis = payload.message.analysis;
 
-      // Extract practiceId from call metadata (set when calls are triggered)
+      // Extract metadata (set when calls are triggered from the app)
       const practiceId = call?.metadata?.practiceId || null;
+      const verificationId = call?.metadata?.verificationId || null;
 
       // Extract structured data - check artifact.structuredOutputs first, then analysis.structuredData
       let structuredResult: VapiStructuredResult = {};
@@ -366,25 +368,45 @@ export async function POST(request: Request) {
         notes: structuredResult.notes,
       };
 
-      // Create verification record
-      const verification = await prisma.verification.create({
-        data: {
-          status,
-          patientName: patientName || "Unknown Patient",
-          patientDOB: patientDOB || "",
-          memberId: memberId || "",
-          insuranceCarrier: insuranceCarrier || "",
-          callDuration,
-          recordingUrl: artifact?.recordingUrl || artifact?.stereoRecordingUrl || call?.recordingUrl,
-          transcript: artifact?.transcript || call?.transcript,
-          benefits: JSON.stringify(benefits),
-          referenceNumber: structuredResult.call_reference || structuredResult.reference_number,
-          repName: structuredResult.rep_name,
-          practiceId,
-        },
-      });
+      // Update existing record (call triggered from app) or create new one (external call)
+      let verification;
 
-      console.log("Verification created:", verification.id);
+      if (verificationId) {
+        verification = await prisma.verification.update({
+          where: { id: verificationId },
+          data: {
+            status,
+            callDuration,
+            recordingUrl: artifact?.recordingUrl || artifact?.stereoRecordingUrl || call?.recordingUrl,
+            transcript: artifact?.transcript || call?.transcript,
+            benefits: JSON.stringify(benefits),
+            referenceNumber: structuredResult.call_reference || structuredResult.reference_number,
+            repName: structuredResult.rep_name,
+            // Only overwrite patient info if structured output has real values
+            ...(patientName && patientName !== "Unknown Patient" ? { patientName } : {}),
+            ...(insuranceCarrier ? { insuranceCarrier } : {}),
+          },
+        });
+        console.log("Verification updated:", verification.id);
+      } else {
+        verification = await prisma.verification.create({
+          data: {
+            status,
+            patientName: patientName || "Unknown Patient",
+            patientDOB: patientDOB || "",
+            memberId: memberId || "",
+            insuranceCarrier: insuranceCarrier || "",
+            callDuration,
+            recordingUrl: artifact?.recordingUrl || artifact?.stereoRecordingUrl || call?.recordingUrl,
+            transcript: artifact?.transcript || call?.transcript,
+            benefits: JSON.stringify(benefits),
+            referenceNumber: structuredResult.call_reference || structuredResult.reference_number,
+            repName: structuredResult.rep_name,
+            practiceId,
+          },
+        });
+        console.log("Verification created:", verification.id);
+      }
 
       return NextResponse.json({
         success: true,
