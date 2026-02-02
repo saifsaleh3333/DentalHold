@@ -6,7 +6,12 @@ async function main() {
   // Practice 1
   const practice1 = await prisma.practice.upsert({
     where: { id: "practice-1" },
-    update: {},
+    update: {
+      npiPractice: "1234567890",
+      npiIndividual: "0987654321",
+      taxId: "12-3456789",
+      fax: "(512) 555-0101",
+    },
     create: {
       id: "practice-1",
       name: "Smile Dental",
@@ -15,6 +20,10 @@ async function main() {
       state: "TX",
       zip: "78701",
       phone: "(512) 555-0100",
+      fax: "(512) 555-0101",
+      npiPractice: "1234567890",
+      npiIndividual: "0987654321",
+      taxId: "12-3456789",
     },
   });
 

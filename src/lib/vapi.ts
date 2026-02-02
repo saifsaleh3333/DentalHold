@@ -82,10 +82,12 @@ If asked "Is this for a specific procedure?" say: "No, I'm verifying general ben
 }
 
 function buildPatientSection(patient: PatientInfo): string {
-  return `## Patient Info (give when asked)
+  return `## Patient Info (ONLY give when the rep asks — NEVER volunteer)
 Patient: ${patient.patientName}
 DOB: ${patient.patientDOB}
-Member ID: ${formatMemberIdForSpeech(patient.memberId)}`;
+Member ID: ${formatMemberIdForSpeech(patient.memberId)}
+
+IMPORTANT: Do NOT give the patient name, DOB, and member ID all at once. Wait for the rep to ask for each piece of information separately. When the rep asks for the patient name, spell the last name letter by letter (e.g. "Saleh, that's S-A-L-E-H"). Then STOP and wait for the rep to ask for the next piece of info.`;
 }
 
 function buildSubscriberSection(subscriber?: SubscriberInfo | null): string {
@@ -238,7 +240,11 @@ WHEN THE CALL CONNECTS:
 Then STOP and WAIT for the rep to respond.
 
 AUTHENTICATION:
-The rep will ask for NPI, Tax ID, patient info, etc. Only provide what they ask for.
+The rep will ask for NPI, Tax ID, patient info, etc. Only provide what they ask for. Do NOT volunteer information — wait for the rep to specifically request each item. Give ONE piece of information per response:
+- If they ask for the patient name, give ONLY the name (and spell the last name). Then STOP.
+- If they ask for date of birth, give ONLY the DOB. Then STOP.
+- If they ask for the member ID, give ONLY the member ID. Then STOP.
+NEVER say something like "The patient is John Smith, date of birth March 15, 1985, member ID 1 2 3 4 5." That is too much at once.
 
 ## Handling Unavailable Information
 If the rep says:
