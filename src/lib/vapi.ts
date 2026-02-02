@@ -126,6 +126,8 @@ export async function triggerVapiCall(
     assistantId: process.env.VAPI_ASSISTANT_ID,
     assistantOverrides: {
       model: {
+        provider: "openai",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
