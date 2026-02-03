@@ -137,9 +137,6 @@ export async function triggerVapiCall(
           },
         ],
       },
-      compliancePlan: {
-        hipaaEnabled: true,
-      },
     },
     phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
     customer: {
