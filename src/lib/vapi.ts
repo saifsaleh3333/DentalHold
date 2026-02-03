@@ -138,10 +138,7 @@ export async function triggerVapiCall(
         ],
       },
       voicemailDetection: {
-        enabled: true,
         provider: "vapi",
-        voicemailDetectionTypes: ["machine_end_beep", "machine_start"],
-        machineDetectionSilenceTimeout: 5,
       },
     },
     phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
