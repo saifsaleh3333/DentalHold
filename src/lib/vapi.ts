@@ -137,6 +137,12 @@ export async function triggerVapiCall(
           },
         ],
       },
+      voicemailDetection: {
+        enabled: true,
+        provider: "vapi",
+        voicemailDetectionTypes: ["machine_end_beep", "machine_start"],
+        machineDetectionSilenceTimeout: 5,
+      },
     },
     phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
     customer: {
@@ -390,4 +396,119 @@ NEVER say a code as one big number (do NOT say "D one hundred fifty" for D0150).
 - If they say "anything else?" ask your next question
 - After you speak, STOP and let the rep respond
 - If there is SILENCE for more than 5 seconds after you ask a question, say: "I'm sorry, are you still there?" If they confirm, repeat your last question.
-- If the rep says "Can you repeat that?" or "What was that?", rephrase using simpler words and say the CDT code more slowly.`;
+- If the rep says "Can you repeat that?" or "What was that?", rephrase using simpler words and say the CDT code more slowly.
+
+## Testing Shortcut
+ONLY if the caller says the EXACT phrase "the secret test phrase is apple pie" (all those words, in that order), respond with:
+"Got it, I have all the information I need. Reference number Delta-Tango-5829. Thank you Maria, have a great day!"
+
+Then end the call. Do NOT trigger this for any other phrase. The words "apple" and "pie" must appear together after "secret test phrase is". Ignore partial matches.
+
+Use these test values for the structured output when the test shortcut is triggered:
+
+HEADER INFO:
+- insurance_company: Delta Dental, 1-800-555-1234
+- rep_name: Maria Thompson
+- call_reference: DELTA-TANGO-5829
+- subscriber_id: DSM987654321
+- patient_name: Sarah Johnson
+- patient_dob: 03/15/1985
+- subscriber_name: Sarah Johnson
+- subscriber_dob: 03/15/1985
+- effective_date: 01/01/2024
+- relationship_to_subscriber: Self
+
+ELIGIBILITY & PLAN INFO:
+- patient_eligible: true
+- in_network: true
+- plan_type: PPO
+- fee_schedule: Premier
+- plan_group_name: Delta Dental PPO - Acme Corporation
+- group_number: 12345
+- claims_mailing_address: PO Box 997330, Sacramento CA 95899
+- payor_id: 12345
+
+BENEFIT DETAILS:
+- annual_maximum: 1500
+- maximum_used: 350
+- maximum_remaining: 1150
+- maximum_applies_to: Basic and Major
+- deductible: 50
+- deductible_met: true
+- deductible_amount_met: 50
+- deductible_applies_to: Basic and Major
+- ortho_maximum: 1500
+- ortho_maximum_used: 0
+
+WAITING PERIODS:
+- waiting_period_preventive: None
+- waiting_period_basic: None
+- waiting_period_major: 12 months
+
+CLAUSES:
+- missing_tooth_clause: true
+
+DIAGNOSTIC:
+- coverage_diagnostic: 100
+- frequency_bwx: Once every 12 months
+- history_bwx: 07/15/2024
+- frequency_pano: Once every 5 years
+- history_pano: 03/2022
+- frequency_fmx: Once every 5 years
+- history_fmx: None on file
+- frequency_d0150: Once every 36 months
+- history_d0150: 01/2023
+- frequency_d0120: Twice per year
+- history_d0120: 07/15/2024
+- frequency_d0140: As needed
+- history_d0140: None on file
+- exams_share_frequency: false
+
+PREVENTIVE:
+- coverage_preventive: 100
+- frequency_d1110: Twice per calendar year
+- history_d1110: 07/15/2024
+- coverage_d4346: 80
+- frequency_d4346: Once per year
+- d4346_shares_with_d1110: true
+- fluoride_covered: true
+- fluoride_age_limit: Under 16
+
+BASIC:
+- coverage_basic: 80
+- downgrade_fillings: true
+
+ENDODONTICS:
+- coverage_endodontics: 80
+
+MAJOR:
+- coverage_major: 50
+- downgrade_crowns: true
+- frequency_crowns: Once every 5 years
+
+EXTRACTIONS:
+- coverage_extractions: 80
+- coverage_d7210: 80
+- coverage_d7140: 80
+
+PERIODONTICS:
+- coverage_periodontics: 80
+- coverage_d4910: 80
+- frequency_d4910: 4 times per year after active therapy
+- frequency_d4341: Once every 24 months per quadrant
+- history_d4341: None on file
+- frequency_d4342: Once every 24 months per quadrant
+- history_d4342: None on file
+
+IMPLANTS:
+- implants_covered: false
+- coverage_d6010: 0
+- coverage_d6057: 0
+- coverage_d6058: 0
+
+OCCLUSAL GUARD:
+- occlusal_guard_covered: true
+- occlusal_guard_coverage: 50
+
+NOTES:
+- notes: Crowns downgraded to predominately base metal. Posterior composites downgraded to amalgam.`;
