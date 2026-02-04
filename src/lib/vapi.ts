@@ -16,6 +16,7 @@ interface PatientInfo {
   patientName: string;
   patientDOB: string;
   memberId: string;
+  patientSSN?: string;
 }
 
 interface SubscriberInfo {
@@ -85,12 +86,19 @@ If asked "Is this for a specific procedure?" say: "No, I'm verifying general ben
 }
 
 function buildPatientSection(patient: PatientInfo): string {
+  const ssnLine = patient.patientSSN
+    ? `\nSubscriber SSN: ${formatMemberIdForSpeech(patient.patientSSN)}`
+    : "";
+  const ssnInstruction = patient.patientSSN
+    ? `\nIf the rep asks for the subscriber's Social Security Number or last four of SSN, provide it slowly: "${formatMemberIdForSpeech(patient.patientSSN)}". Do NOT volunteer the SSN — only give it when specifically asked.`
+    : "";
+
   return `## Patient Info (ONLY give when the rep asks — NEVER volunteer)
 Patient: ${patient.patientName}
 DOB: ${patient.patientDOB}
-Member ID: ${formatMemberIdForSpeech(patient.memberId)}
+Member ID: ${formatMemberIdForSpeech(patient.memberId)}${ssnLine}
 
-IMPORTANT: Do NOT give the patient name, DOB, and member ID all at once. Wait for the rep to ask for each piece of information separately. When the rep asks for the patient name, say the full name clearly and then spell BOTH the first and last name letter by letter (e.g. "The patient is Saif Saleh. First name S... A... I... F. Last name S... A... L... E... H."). Then STOP and wait for the rep to ask for the next piece of info.`;
+IMPORTANT: Do NOT give the patient name, DOB, and member ID all at once. Wait for the rep to ask for each piece of information separately. When the rep asks for the patient name, say the full name clearly and then spell BOTH the first and last name letter by letter (e.g. "The patient is Saif Saleh. First name S... A... I... F. Last name S... A... L... E... H."). Then STOP and wait for the rep to ask for the next piece of info.${ssnInstruction}`;
 }
 
 function buildSubscriberSection(subscriber?: SubscriberInfo | null): string {
@@ -130,6 +138,7 @@ export async function triggerVapiCall(
   const payload = {
     assistantId: process.env.VAPI_ASSISTANT_ID,
     assistantOverrides: {
+      maxDurationSeconds: 4500,
       model: {
         provider: "openai",
         model: "gpt-4o",
@@ -388,6 +397,15 @@ ALWAYS say CDT codes as individual digits, not as one big number. Examples:
 - D7210 = "D seventy-two ten"
 - D9944 = "D ninety-nine forty-four"
 NEVER say a code as one big number (do NOT say "D one hundred fifty" for D0150).
+
+## When to Hang Up
+- If you are stuck in an IVR loop for more than 3 minutes (same menu keeps repeating and you cannot get through), hang up.
+- If you are transferred to a dead line with continuous silence (no hold music, no voice, nothing) for more than 5 minutes, hang up.
+- If the rep puts you on hold and never comes back after 45 minutes of hold music, hang up.
+- If the rep says "call back later", "our system is down", or "we can't help you right now", say "Okay, thank you for your time" and end the call.
+- If you reach a voicemail box, hang up immediately. Do NOT leave a message.
+- Do NOT hang up during normal hold music — hold times of 15 to 45 minutes are expected and normal. Be patient.
+- If you have completed all verification questions and gotten a reference number, thank the rep and end the call normally.
 
 ## Critical
 - WAIT for the rep to respond before asking the next question

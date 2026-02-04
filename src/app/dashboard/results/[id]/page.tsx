@@ -162,6 +162,7 @@ interface Verification {
   patientName: string;
   patientDOB: string;
   memberId: string;
+  patientSSN?: string;
   insuranceCarrier: string;
   callDuration?: string;
   recordingUrl?: string;
@@ -442,6 +443,13 @@ export default function VerificationResultsDetail() {
           <Cell label="Subscriber Name" value={b?.subscriberName} className="border-r border-slate-200" />
           <Cell label="Effective Date" value={b?.effectiveDate} />
         </div>
+        {/* Row 2b: SSN (only if present) */}
+        {verification.patientSSN && (
+          <div className="grid grid-cols-3 border-b border-slate-200">
+            <Cell label="SSN" value={verification.patientSSN} className="border-r border-slate-200" />
+            <div className="col-span-2" />
+          </div>
+        )}
         {/* Row 3: DOBs, Relationship */}
         <div className="grid grid-cols-3 border-b border-slate-200">
           <Cell label="Patient DOB" value={verification.patientDOB} className="border-r border-slate-200" />

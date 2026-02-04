@@ -8,6 +8,7 @@ interface FormData {
   patientName: string;
   dob: string;
   memberId: string;
+  patientSSN: string;
   insuranceCarrier: string;
   phoneNumber: string;
   subscriberName: string;
@@ -19,6 +20,7 @@ const emptyForm: FormData = {
   patientName: "",
   dob: "",
   memberId: "",
+  patientSSN: "",
   insuranceCarrier: "",
   phoneNumber: "",
   subscriberName: "",
@@ -57,6 +59,7 @@ export default function NewVerification() {
           memberId: form.memberId,
           insuranceCarrier: form.insuranceCarrier,
           phoneNumber: form.phoneNumber,
+          patientSSN: form.patientSSN || undefined,
           subscriberName: form.subscriberName || undefined,
           subscriberDOB: form.subscriberDob || undefined,
         }),
@@ -137,6 +140,23 @@ export default function NewVerification() {
                   placeholder="e.g., ABC123456789"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900 placeholder-slate-400"
                 />
+              </div>
+              <div>
+                <label htmlFor="patientSSN" className="block text-sm font-medium text-slate-700 mb-1.5">
+                  SSN (optional)
+                </label>
+                <input
+                  type="password"
+                  id="patientSSN"
+                  value={form.patientSSN}
+                  onChange={(e) => handleChange("patientSSN", e.target.value)}
+                  placeholder="###-##-####"
+                  autoComplete="off"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900 placeholder-slate-400"
+                />
+                <p className="mt-1.5 text-sm text-slate-500">
+                  Some insurers require SSN to verify. Only provide if needed.
+                </p>
               </div>
             </div>
           </div>

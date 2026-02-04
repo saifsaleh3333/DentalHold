@@ -25,8 +25,17 @@ export async function GET(
       );
     }
 
+    // Mask SSN - only return last 4 digits
+    let maskedSSN: string | null = null;
+    if (verification.patientSSN) {
+      const digits = verification.patientSSN.replace(/\D/g, "");
+      const last4 = digits.slice(-4);
+      maskedSSN = digits.length > 4 ? `***-**-${last4}` : `****${last4}`;
+    }
+
     return NextResponse.json({
       ...verification,
+      patientSSN: maskedSSN,
       benefits: verification.benefits ? JSON.parse(verification.benefits) : null,
     });
   } catch (error) {
