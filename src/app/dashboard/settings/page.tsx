@@ -14,6 +14,7 @@ interface PracticeData {
   npiPractice: string;
   npiIndividual: string;
   taxId: string;
+  dentistName: string;
 }
 
 const emptyPractice: PracticeData = {
@@ -27,6 +28,7 @@ const emptyPractice: PracticeData = {
   npiPractice: "",
   npiIndividual: "",
   taxId: "",
+  dentistName: "",
 };
 
 export default function SettingsPage() {
@@ -53,6 +55,7 @@ export default function SettingsPage() {
             npiPractice: data.npiPractice || "",
             npiIndividual: data.npiIndividual || "",
             taxId: data.taxId || "",
+            dentistName: data.dentistName || "",
           });
         }
       } catch {
@@ -276,6 +279,19 @@ export default function SettingsPage() {
                   value={practice.taxId}
                   onChange={(e) => handleChange("taxId", e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900"
+                />
+              </div>
+              <div>
+                <label htmlFor="dentistName" className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Treating Dentist
+                </label>
+                <input
+                  type="text"
+                  id="dentistName"
+                  value={practice.dentistName}
+                  onChange={(e) => handleChange("dentistName", e.target.value)}
+                  placeholder="e.g., Dr. Michael Rivera, DDS"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900 placeholder-slate-400"
                 />
               </div>
             </div>

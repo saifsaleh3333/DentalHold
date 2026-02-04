@@ -38,6 +38,7 @@ const ALLOWED_FIELDS = [
   "npiPractice",
   "npiIndividual",
   "taxId",
+  "dentistName",
 ] as const;
 
 export async function PATCH(request: Request) {

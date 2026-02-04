@@ -9,6 +9,7 @@ interface PracticeInfo {
   npiPractice: string | null;
   npiIndividual: string | null;
   taxId: string | null;
+  dentistName: string | null;
 }
 
 interface PatientInfo {
@@ -69,6 +70,7 @@ function buildPracticeSection(practice: PracticeInfo): string {
 
   return `## Practice Info (give when asked)
 Practice Name: ${practice.name}
+Treating Dentist: ${practice.dentistName || "N/A"}
 Practice Address: ${address || "N/A"}
 Practice Phone: ${practice.phone || "N/A"}
 Fax: ${practice.fax || "N/A"}
@@ -78,6 +80,7 @@ Practice (Group) NPI: ${practice.npiPractice || "N/A"}
 Tax ID: ${practice.taxId || "N/A"}
 
 NOTE: If the rep asks for "the NPI," give the Practice NPI first (${practice.npiPractice || "N/A"}). If they specifically ask for the individual or rendering provider NPI, give ${practice.npiIndividual || "N/A"}.
+If asked for the dentist's name or the treating/rendering provider, say: "${practice.dentistName || "N/A"}".
 If asked "Is this for a specific procedure?" say: "No, I'm verifying general benefits and eligibility for a new patient."`;
 }
 

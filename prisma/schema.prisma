@@ -20,6 +20,7 @@ model Practice {
   npiPractice   String?
   npiIndividual String?
   taxId         String?
+  dentistName   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
