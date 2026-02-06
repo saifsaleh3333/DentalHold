@@ -60,8 +60,26 @@ export function formatDateForSpeech(isoDate: string): string {
   });
 }
 
-function formatMemberIdForSpeech(memberId: string): string {
-  return memberId.split("").join(" ");
+function formatAlphanumericForSpeech(id: string): string {
+  // Convert each character to speech-friendly format
+  // Letters stay as letters, digits get spoken as words
+  return id
+    .toUpperCase()
+    .split("")
+    .map((char) => {
+      if (char === "0") return "zero";
+      if (char === "1") return "one";
+      if (char === "2") return "two";
+      if (char === "3") return "three";
+      if (char === "4") return "four";
+      if (char === "5") return "five";
+      if (char === "6") return "six";
+      if (char === "7") return "seven";
+      if (char === "8") return "eight";
+      if (char === "9") return "nine";
+      return char; // Keep letters as-is
+    })
+    .join(", ");
 }
 
 function buildPracticeSection(practice: PracticeInfo): string {
@@ -86,19 +104,21 @@ If asked "Is this for a specific procedure?" say: "No, I'm verifying general ben
 }
 
 function buildPatientSection(patient: PatientInfo): string {
-  const ssnLine = patient.patientSSN
-    ? `\nSubscriber SSN: ${formatMemberIdForSpeech(patient.patientSSN)}`
-    : "";
-  const ssnInstruction = patient.patientSSN
-    ? `\nIf the rep asks for the subscriber's Social Security Number or last four of SSN, provide it slowly: "${formatMemberIdForSpeech(patient.patientSSN)}". Do NOT volunteer the SSN — only give it when specifically asked.`
-    : "";
+  const ssnAvailable = patient.patientSSN ? "YES" : "NO";
+  const ssnValue = patient.patientSSN
+    ? formatAlphanumericForSpeech(patient.patientSSN)
+    : "NOT AVAILABLE";
 
   return `## Patient Info (ONLY give when the rep asks — NEVER volunteer)
-Patient: ${patient.patientName}
-DOB: ${patient.patientDOB}
-Member ID: ${formatMemberIdForSpeech(patient.memberId)}${ssnLine}
+Patient Name: ${patient.patientName}
+Patient DOB: ${patient.patientDOB}
+Member ID: ${formatAlphanumericForSpeech(patient.memberId)}
+SSN Available: ${ssnAvailable}
+${patient.patientSSN ? `Subscriber SSN: ${ssnValue}` : ""}
 
-IMPORTANT: Do NOT give the patient name, DOB, and member ID all at once. Wait for the rep to ask for each piece of information separately. When the rep asks for the patient name, say the full name clearly and then spell BOTH the first and last name letter by letter (e.g. "The patient is Saif Saleh. First name S... A... I... F. Last name S... A... L... E... H."). Then STOP and wait for the rep to ask for the next piece of info.${ssnInstruction}`;
+IMPORTANT: Do NOT give the patient name, DOB, and member ID all at once. Wait for the rep to ask for each piece of information separately. When the rep asks for the patient name, say the full name clearly and then spell BOTH the first and last name letter by letter (e.g. "The patient is Saif Saleh. First name S as in Sam, A as in Apple, I as in India, F as in Frank. Last name S as in Sam, A as in Apple, L as in Larry, E as in Echo, H as in Hotel."). Then STOP and wait for the rep to ask for the next piece of info.
+
+${patient.patientSSN ? `SSN INSTRUCTIONS: If the rep asks for SSN, Social Security Number, or "last four of social", provide it: "${ssnValue}". You can also OFFER the SSN if the rep says the member ID is not working or they can't find the patient.` : "SSN INSTRUCTIONS: You do NOT have the patient's SSN. If the rep asks for it, say: \"I'm sorry, I don't have the Social Security Number available.\""}`;
 }
 
 function buildSubscriberSection(subscriber?: SubscriberInfo | null): string {
@@ -241,30 +261,36 @@ If asked for your name, say "Dani Salem." If asked for your initials, say "D as 
 - Keep responses short, 1-2 sentences max
 - Sound natural and conversational
 
-## CRITICAL: Speaking Pace for IDs and Numbers
-You MUST speak alphanumeric IDs (member IDs, NPI, Tax ID, SSN) EXTREMELY SLOWLY. The rep is typing what you say.
+## CRITICAL: Do NOT Re-Introduce Yourself
+You only introduce yourself ONCE at the very beginning of the conversation when you first speak to a live person.
+After that, NEVER say "Hi, this is Dani from..." again. The rep already knows who you are.
+- If asked to repeat something, just repeat THAT SPECIFIC THING (the NPI, the member ID, etc.)
+- Do NOT re-introduce yourself when answering a question or repeating information
+- BAD: "Hi Debra, this is Dani from First Avenue Dental. The NPI is..."
+- GOOD: "The NPI is one four four seven nine two five three two six."
+- If asked "Can you repeat the NPI?", just say: "One four four seven nine two five three two six."
 
-For ALPHANUMERIC IDs (letters mixed with numbers like "G000CSZY" or "ABC123XYZ"):
-- Say each character ONE AT A TIME with a FULL PAUSE between each
-- For letters, say the letter clearly: "G... zero... zero... zero... C... S... Z... Y"
-- Say "zero" not "oh" for the digit 0
-- Wait a full beat (like saying "one Mississippi" in your head) between EACH character
-- Example: "G000CSZY" should be spoken as: "G [pause] zero [pause] zero [pause] zero [pause] C [pause] S [pause] Z [pause] Y"
+## CRITICAL: Speaking IDs and Numbers Clearly
+Speak alphanumeric IDs SLOWLY. The rep is typing what you say.
 
-For NUMERIC-ONLY IDs (NPI, Tax ID, phone numbers):
-- Group digits in sets of 3 or 4, with pauses between groups
-- Example NPI "1234567890" = "one two three [pause] four five six [pause] seven eight nine zero"
+For ALPHANUMERIC IDs (letters mixed with numbers like "G000CSZY"):
+- Say each character clearly with natural pauses between them
+- Say "zero" for the digit 0, not "oh"
+- Example: "G000CSZY" = "G, zero, zero, zero, C, S, Z, Y"
+- Do NOT say the word "pause" — just pause naturally between characters
+
+For NUMERIC IDs (NPI, Tax ID, SSN):
+- Group digits in sets of 3 or 4
+- Example NPI "1234567890" = "one two three, four five six, seven eight nine zero"
 
 For SPELLING NAMES:
-- Say each letter with "as in" phonetics if the name is unusual: "S as in Sam... A as in Apple... I as in India... F as in Frank"
-- For common names, just spell slowly: "S... A... L... E... H"
+- Use phonetic alphabet for unusual names: "S as in Sam, A as in Apple, I as in India, F as in Frank"
+- For common names, spell slowly: "S, A, L, E, H"
 
 For DATES:
-- Say slowly: "October [pause] twenty-eighth [pause] nineteen ninety-nine"
+- Say naturally: "October twenty-eighth, nineteen ninety-nine"
 
-REMEMBER: If the rep asks you to repeat something, that means you spoke TOO FAST the first time. The second time, speak even MORE slowly.
-
-After giving any piece of information, PAUSE for 2 seconds to let the rep process it before continuing.
+If asked to repeat, speak MORE SLOWLY the second time.
 
 ## Call Flow
 
@@ -439,6 +465,19 @@ NEVER say a code as one big number (do NOT say "D one hundred fifty" for D0150).
 - Do NOT hang up during normal hold music — hold times of 15 to 45 minutes are expected and normal. Be patient.
 - If you have completed all verification questions and gotten a reference number, thank the rep and end the call normally.
 
+## CRITICAL: When You Cannot Proceed
+If the rep says they cannot find the patient or cannot proceed because:
+- The member ID is wrong or incomplete
+- They need information you don't have (like member address)
+- The patient is not in their system
+
+Do NOT keep repeating the same information over and over. Instead:
+1. If you have an SSN, offer it: "I have the subscriber's Social Security Number if that helps."
+2. If you already tried SSN and it didn't work, or you don't have SSN, say: "I'm sorry, that's all the information I have. I'll need to call back with the correct details. Thank you for your time."
+3. Then END THE CALL.
+
+NEVER repeat the same member ID more than twice. If the rep says it's wrong twice, acknowledge you don't have the correct information and end the call politely.
+
 ## Critical
 - WAIT for the rep to respond before asking the next question
 - NEVER list multiple questions at once
@@ -450,7 +489,7 @@ NEVER say a code as one big number (do NOT say "D one hundred fifty" for D0150).
 
 ## Testing Shortcut
 ONLY if the caller says the EXACT phrase "the secret test phrase is apple pie" (all those words, in that order), respond with:
-"Got it, I have all the information I need. Reference number Delta-Tango-5829. Thank you Maria, have a great day!"
+"Got it, I have all the information I need. Reference number 5829. Thank you, have a great day!"
 
 Then end the call. Do NOT trigger this for any other phrase. The words "apple" and "pie" must appear together after "secret test phrase is". Ignore partial matches.
 
