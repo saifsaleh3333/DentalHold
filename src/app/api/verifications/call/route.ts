@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // Validate required fields
-    const { patientName, patientDOB, memberId, insuranceCarrier, phoneNumber, patientSSN } = body;
+    const { patientName, patientDOB, memberId, groupNumber, insuranceCarrier, phoneNumber, patientSSN } = body;
     if (!patientName || !patientDOB || !memberId || !insuranceCarrier || !phoneNumber) {
       return NextResponse.json(
         { error: "Missing required fields: patientName, patientDOB, memberId, insuranceCarrier, phoneNumber" },
@@ -54,6 +54,7 @@ export async function POST(request: Request) {
         patientName,
         patientDOB: spokenPatientDOB,
         memberId,
+        groupNumber: groupNumber || null,
         insuranceCarrier,
         phoneNumber: e164Phone,
         patientSSN: patientSSN || null,
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
           patientName,
           patientDOB: spokenPatientDOB,
           memberId,
+          groupNumber: groupNumber || undefined,
           patientSSN: patientSSN || undefined,
         },
         subscriber: body.subscriberName

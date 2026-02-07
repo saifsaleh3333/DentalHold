@@ -16,6 +16,7 @@ interface PatientInfo {
   patientName: string;
   patientDOB: string;
   memberId: string;
+  groupNumber?: string;
   patientSSN?: string;
 }
 
@@ -108,15 +109,21 @@ function buildPatientSection(patient: PatientInfo): string {
   const ssnValue = patient.patientSSN
     ? formatAlphanumericForSpeech(patient.patientSSN)
     : "NOT AVAILABLE";
+  const groupNumberValue = patient.groupNumber
+    ? formatAlphanumericForSpeech(patient.groupNumber)
+    : "NOT AVAILABLE";
 
   return `## Patient Info (ONLY give when the rep asks — NEVER volunteer)
 Patient Name: ${patient.patientName}
 Patient DOB: ${patient.patientDOB}
 Member ID: ${formatAlphanumericForSpeech(patient.memberId)}
+${patient.groupNumber ? `Group Number: ${groupNumberValue}` : "Group Number: NOT AVAILABLE"}
 SSN Available: ${ssnAvailable}
 ${patient.patientSSN ? `Subscriber SSN: ${ssnValue}` : ""}
 
 IMPORTANT: Do NOT give the patient name, DOB, and member ID all at once. Wait for the rep to ask for each piece of information separately. When the rep asks for the patient name, say the full name clearly and then spell BOTH the first and last name letter by letter (e.g. "The patient is Saif Saleh. First name S as in Sam, A as in Apple, I as in India, F as in Frank. Last name S as in Sam, A as in Apple, L as in Larry, E as in Echo, H as in Hotel."). Then STOP and wait for the rep to ask for the next piece of info.
+
+GROUP NUMBER: If the rep asks for the group number or group ID, provide: "${groupNumberValue}". Note: The group number is DIFFERENT from the member ID. Do not confuse them.
 
 ${patient.patientSSN ? `SSN INSTRUCTIONS: If the rep asks for SSN, Social Security Number, or "last four of social", provide it: "${ssnValue}". You can also OFFER the SSN if the rep says the member ID is not working or they can't find the patient.` : "SSN INSTRUCTIONS: You do NOT have the patient's SSN. If the rep asks for it, say: \"I'm sorry, I don't have the Social Security Number available.\""}`;
 }

@@ -87,6 +87,7 @@ model Verification {
   patientName      String
   patientDOB       String
   memberId         String
+  groupNumber      String?
   patientSSN       String?
   insuranceCarrier String
 

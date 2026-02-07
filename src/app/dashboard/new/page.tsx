@@ -8,6 +8,7 @@ interface FormData {
   patientName: string;
   dob: string;
   memberId: string;
+  groupNumber: string;
   patientSSN: string;
   insuranceCarrier: string;
   phoneNumber: string;
@@ -20,6 +21,7 @@ const emptyForm: FormData = {
   patientName: "",
   dob: "",
   memberId: "",
+  groupNumber: "",
   patientSSN: "",
   insuranceCarrier: "",
   phoneNumber: "",
@@ -57,6 +59,7 @@ export default function NewVerification() {
           patientName: form.patientName,
           patientDOB: form.dob,
           memberId: form.memberId,
+          groupNumber: form.groupNumber || undefined,
           insuranceCarrier: form.insuranceCarrier,
           phoneNumber: form.phoneNumber,
           patientSSN: form.patientSSN || undefined,
@@ -128,16 +131,32 @@ export default function NewVerification() {
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900"
                 />
               </div>
-              <div>
+              <div className="col-span-2">
                 <label htmlFor="memberId" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Member ID *
+                  Member ID / Insured Member Number *
                 </label>
                 <input
                   type="text"
                   id="memberId"
                   value={form.memberId}
                   onChange={(e) => handleChange("memberId", e.target.value)}
-                  placeholder="e.g., ABC123456789"
+                  placeholder="e.g., CSZY0016149039"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900 placeholder-slate-400"
+                />
+                <p className="mt-1.5 text-sm text-slate-500">
+                  The individual member ID from the insurance card — not the Group ID/Number
+                </p>
+              </div>
+              <div>
+                <label htmlFor="groupNumber" className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Group Number
+                </label>
+                <input
+                  type="text"
+                  id="groupNumber"
+                  value={form.groupNumber}
+                  onChange={(e) => handleChange("groupNumber", e.target.value)}
+                  placeholder="e.g., G000CSZY"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900 placeholder-slate-400"
                 />
               </div>
@@ -155,7 +174,7 @@ export default function NewVerification() {
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900 placeholder-slate-400"
                 />
                 <p className="mt-1.5 text-sm text-slate-500">
-                  Some insurers require SSN to verify. Only provide if needed.
+                  Backup if member ID lookup fails
                 </p>
               </div>
             </div>
