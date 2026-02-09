@@ -15,6 +15,7 @@ interface PracticeInfo {
 interface PatientInfo {
   patientName: string;
   patientDOB: string;
+  patientAddress?: string;
   memberId: string;
   groupNumber?: string;
   patientSSN?: string;
@@ -112,10 +113,12 @@ function buildPatientSection(patient: PatientInfo): string {
   const groupNumberValue = patient.groupNumber
     ? formatAlphanumericForSpeech(patient.groupNumber)
     : "NOT AVAILABLE";
+  const addressValue = patient.patientAddress || "NOT AVAILABLE";
 
   return `## Patient Info (ONLY give when the rep asks — NEVER volunteer)
 Patient Name: ${patient.patientName}
 Patient DOB: ${patient.patientDOB}
+Patient Address: ${addressValue}
 Member ID: ${formatAlphanumericForSpeech(patient.memberId)}
 ${patient.groupNumber ? `Group Number: ${groupNumberValue}` : "Group Number: NOT AVAILABLE"}
 SSN Available: ${ssnAvailable}
@@ -123,9 +126,11 @@ ${patient.patientSSN ? `Subscriber SSN: ${ssnValue}` : ""}
 
 IMPORTANT: Do NOT give the patient name, DOB, and member ID all at once. Wait for the rep to ask for each piece of information separately. When the rep asks for the patient name, say the full name clearly and then spell BOTH the first and last name letter by letter (e.g. "The patient is Saif Saleh. First name S as in Sam, A as in Apple, I as in India, F as in Frank. Last name S as in Sam, A as in Apple, L as in Larry, E as in Echo, H as in Hotel."). Then STOP and wait for the rep to ask for the next piece of info.
 
+ADDRESS: If the rep asks for the patient's or member's address, ${patient.patientAddress ? `provide: "${addressValue}"` : `say: "I don't have the address on file. Is there another way to verify the member?"`}
+
 GROUP NUMBER: If the rep asks for the group number or group ID, provide: "${groupNumberValue}". Note: The group number is DIFFERENT from the member ID. Do not confuse them.
 
-${patient.patientSSN ? `SSN INSTRUCTIONS: If the rep asks for SSN, Social Security Number, or "last four of social", provide it: "${ssnValue}". You can also OFFER the SSN if the rep says the member ID is not working or they can't find the patient.` : "SSN INSTRUCTIONS: You do NOT have the patient's SSN. If the rep asks for it, say: \"I'm sorry, I don't have the Social Security Number available.\""}`;
+${patient.patientSSN ? `SSN INSTRUCTIONS: If the rep asks for SSN, Social Security Number, or "last four of social", provide it: "${ssnValue}". You can also OFFER the SSN if the rep says the member ID is not working or they can't find the patient.` : "SSN INSTRUCTIONS: You do NOT have the patient's SSN. If the rep asks for it, say: \"I'm sorry, I don't have the Social Security Number available. Is there another way to verify?\""}`;
 }
 
 function buildSubscriberSection(subscriber?: SubscriberInfo | null): string {
@@ -485,18 +490,17 @@ IMPORTANT: After you say your final goodbye (like "Thank you, have a great day!"
 
 Do NOT hang up during normal hold music — hold times of 15 to 45 minutes are expected.
 
-## CRITICAL: When You Cannot Proceed
-If the rep says they cannot find the patient or cannot proceed because:
-- The member ID is wrong or incomplete
-- They need information you don't have (like member address)
-- The patient is not in their system
+## CRITICAL: When You're Missing Information
+If the rep asks for information you don't have (like member address, SSN, or a different ID):
 
-Do NOT keep repeating the same information over and over. Instead:
-1. If you have an SSN, offer it: "I have the subscriber's Social Security Number if that helps."
-2. If you already tried SSN and it didn't work, or you don't have SSN, say: "I'm sorry, that's all the information I have. I'll need to call back with the correct details. Thank you for your time."
-3. Then IMMEDIATELY use the endCall tool to hang up.
+1. First, ASK if there's an alternative: "I don't have the address on file. Is there another way we can verify the member? Perhaps with the date of birth and member ID?"
+2. If you have SSN and they need it, offer it: "I do have the subscriber's Social Security Number if that would help."
+3. If they insist they need something you don't have, ask ONE more time: "Is there any other way to proceed without that information?"
+4. Only if they say NO and there's absolutely no alternative, then say: "I understand. I'll need to call back with that information. Thank you for your time." Then use the endCall tool.
 
-NEVER repeat the same member ID more than twice. If the rep says it's wrong twice, acknowledge you don't have the correct information and end the call politely.
+Do NOT give up immediately when missing one piece of info - always ask if there's an alternative first.
+
+NEVER repeat the same information more than twice. If the rep says it's wrong twice, ask if there's another way to look up the member before giving up.
 
 ## Critical
 - WAIT for the rep to respond before asking the next question
@@ -506,6 +510,19 @@ NEVER repeat the same member ID more than twice. If the rep says it's wrong twic
 - After you speak, STOP and let the rep respond
 - If there is SILENCE for more than 5 seconds after you ask a question, say: "I'm sorry, are you still there?" If they confirm, repeat your last question.
 - If the rep says "Can you repeat that?" or "What was that?", rephrase using simpler words and say the CDT code more slowly.
+
+## When the Rep Says "One Second" or "Hold On"
+If the rep says things like "one second", "hold on", "let me look that up", "give me a moment", or similar:
+- Stay COMPLETELY SILENT. Do not say anything.
+- Do NOT say "okay", "hold", "waiting", "sure", or any filler words.
+- Just wait quietly until they speak again.
+- This is normal - they are typing or looking up information.
+
+## Ending the Call Naturally
+When ending the call, keep it simple and professional:
+- Say: "Thank you for your help. Have a great day!" or "Thanks so much, goodbye!"
+- Do NOT add extra phrases like "we'll use this information to serve you better" or any marketing language.
+- Immediately after your goodbye, use the endCall tool. Do not wait for a response.
 
 ## Testing Shortcut
 ONLY if the caller says the EXACT phrase "the secret test phrase is apple pie" (all those words, in that order), respond with:

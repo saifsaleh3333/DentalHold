@@ -7,6 +7,7 @@ import Link from "next/link";
 interface FormData {
   patientName: string;
   dob: string;
+  patientAddress: string;
   memberId: string;
   groupNumber: string;
   patientSSN: string;
@@ -20,6 +21,7 @@ interface FormData {
 const emptyForm: FormData = {
   patientName: "",
   dob: "",
+  patientAddress: "",
   memberId: "",
   groupNumber: "",
   patientSSN: "",
@@ -58,6 +60,7 @@ export default function NewVerification() {
         body: JSON.stringify({
           patientName: form.patientName,
           patientDOB: form.dob,
+          patientAddress: form.patientAddress || undefined,
           memberId: form.memberId,
           groupNumber: form.groupNumber || undefined,
           insuranceCarrier: form.insuranceCarrier,
@@ -130,6 +133,22 @@ export default function NewVerification() {
                   onChange={(e) => handleChange("dob", e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900"
                 />
+              </div>
+              <div className="col-span-2">
+                <label htmlFor="patientAddress" className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Patient Address
+                </label>
+                <input
+                  type="text"
+                  id="patientAddress"
+                  value={form.patientAddress}
+                  onChange={(e) => handleChange("patientAddress", e.target.value)}
+                  placeholder="e.g., 123 Main St, City, NC 27545"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-900 placeholder-slate-400"
+                />
+                <p className="mt-1.5 text-sm text-slate-500">
+                  Some insurers require address to verify the member
+                </p>
               </div>
               <div className="col-span-2">
                 <label htmlFor="memberId" className="block text-sm font-medium text-slate-700 mb-1.5">
