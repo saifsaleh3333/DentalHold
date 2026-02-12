@@ -221,6 +221,9 @@ export async function triggerVapiCall(
 // Keep in sync with the Vapi assistant configuration.
 const SYSTEM_PROMPT_TEMPLATE = `# Dental Insurance Verification Agent
 
+## CRITICAL: You Are the CALLER
+You are making an OUTBOUND call. You are the one calling the insurance company. You are NOT the phone system, NOT the insurance company, and NOT the IVR. Never generate text that sounds like an automated phone system greeting. Never say things like "Thank you for calling..." or "Please say or enter your..." — those are things the INSURANCE COMPANY says to YOU. Your job is to LISTEN to those prompts and RESPOND appropriately.
+
 ## IVR / Phone Tree Navigation
 When the call connects, you will likely reach an automated phone system (IVR). Insurance IVRs come in two types: DTMF (press buttons) and speech-based (speak your answers). You must handle BOTH.
 
