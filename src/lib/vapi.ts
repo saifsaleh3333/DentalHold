@@ -89,6 +89,16 @@ function buildPracticeSection(practice: PracticeInfo): string {
     .filter(Boolean)
     .join(", ");
 
+  const npiIndividual = practice.npiIndividual
+    ? formatAlphanumericForSpeech(practice.npiIndividual)
+    : "N/A";
+  const npiPractice = practice.npiPractice
+    ? formatAlphanumericForSpeech(practice.npiPractice)
+    : "N/A";
+  const taxId = practice.taxId
+    ? formatAlphanumericForSpeech(practice.taxId)
+    : "N/A";
+
   return `## Practice Info (give when asked)
 Practice Name: ${practice.name}
 Treating Dentist: ${practice.dentistName || "N/A"}
@@ -96,11 +106,11 @@ Practice Address: ${address || "N/A"}
 Practice Phone: ${practice.phone || "N/A"}
 Fax: ${practice.fax || "N/A"}
 Callback Number: ${practice.phone || "N/A"} (same as practice phone)
-Dentist (Individual) NPI: ${practice.npiIndividual || "N/A"}
-Practice (Group) NPI: ${practice.npiPractice || "N/A"}
-Tax ID: ${practice.taxId || "N/A"}
+Dentist (Individual) NPI: ${npiIndividual}
+Practice (Group) NPI: ${npiPractice}
+Tax ID: ${taxId}
 
-NOTE: If the rep asks for "the NPI," give the Practice NPI first (${practice.npiPractice || "N/A"}). If they specifically ask for the individual or rendering provider NPI, give ${practice.npiIndividual || "N/A"}.
+NOTE: If the rep asks for "the NPI," give the Practice NPI first (${npiPractice}). If they specifically ask for the individual or rendering provider NPI, give ${npiIndividual}.
 If asked for the dentist's name or the treating/rendering provider, say: "${practice.dentistName || "N/A"}".
 If asked "Is this for a specific procedure?" say: "No, I'm verifying general benefits and eligibility for a new patient."`;
 }
@@ -334,15 +344,16 @@ After that, NEVER say "Hi, this is Dani from..." again. The rep already knows wh
 ## CRITICAL: Speaking IDs and Numbers Clearly
 Speak alphanumeric IDs SLOWLY. The rep is typing what you say.
 
+ABSOLUTE RULE: ALWAYS say "ZERO" for the digit 0. NEVER say "oh" or "O" for the number zero. This applies to ALL numbers: NPIs, Tax IDs, SSNs, member IDs, group numbers, CDT codes, dates, and any other number you speak. "Oh" is a letter, "zero" is a number. Always use "zero."
+
 For ALPHANUMERIC IDs (letters mixed with numbers like "G000CSZY"):
 - Say each character clearly with natural pauses between them
-- Say "zero" for the digit 0, not "oh"
 - Example: "G000CSZY" = "G, zero, zero, zero, C, S, Z, Y"
 - Do NOT say the word "pause" — just pause naturally between characters
 
 For NUMERIC IDs (NPI, Tax ID, SSN):
-- Group digits in sets of 3 or 4
-- Example NPI "1234567890" = "one two three, four five six, seven eight nine zero"
+- The IDs in this prompt are already formatted for speech. Read them exactly as written.
+- Example: "one, four, zero, seven, six, eight, six, six, four, five" — say it exactly like that.
 
 For SPELLING NAMES:
 - Use phonetic alphabet for unusual names: "S as in Sam, A as in Apple, I as in India, F as in Frank"
