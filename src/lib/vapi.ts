@@ -167,27 +167,54 @@ export async function triggerVapiCall(
 
   const systemPrompt = buildSystemPrompt(practice, patient, subscriber);
 
+  // Define the full assistant inline — no base assistant, no ghost settings
   const payload = {
-    assistantId: process.env.VAPI_ASSISTANT_ID,
-    assistantOverrides: {
-      maxDurationSeconds: 4500,
+    assistant: {
+      name: "Dani",
       model: {
-        provider: "openai",
+        provider: "openai" as const,
         model: "gpt-4o",
         messages: [
           {
-            role: "system",
+            role: "system" as const,
             content: systemPrompt,
           },
         ],
         tools: [
-          {
-            type: "endCall",
-          },
+          { type: "endCall" as const },
+          { type: "dtmf" as const },
         ],
       },
+      voice: {
+        provider: "11labs" as const,
+        model: "eleven_turbo_v2_5" as const,
+        voiceId: "LLEUnU5vlkaEV6dSdkOl",
+        stability: 0.5,
+        similarityBoost: 0.75,
+      },
+      transcriber: {
+        provider: "deepgram" as const,
+        model: "nova-general" as const,
+        language: "en",
+      },
+      firstMessage: "",
+      firstMessageMode: "assistant-waits-for-user" as const,
+      endCallMessage: "",
+      voicemailMessage: "",
+      silenceTimeoutSeconds: 2700,
+      maxDurationSeconds: 4500,
+      backgroundDenoisingEnabled: true,
       voicemailDetection: {
-        provider: "vapi",
+        provider: "vapi" as const,
+      },
+      server: {
+        url: "https://dentalhold.com/api/vapi-webhook",
+        timeoutSeconds: 20,
+      },
+      startSpeakingPlan: {
+        smartEndpointingPlan: {
+          provider: "livekit" as const,
+        },
       },
     },
     phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
