@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface CodeDetail {
@@ -224,10 +224,31 @@ function CodeRow({ code, label, detail }: { code: string; label: string; detail?
 
 export default function VerificationResultsDetail() {
   const params = useParams();
+  const router = useRouter();
   const [verification, setVerification] = useState<Verification | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+
+  async function handleRestart() {
+    if (!verification || restarting) return;
+    setRestarting(true);
+    try {
+      const res = await fetch(`/api/verifications/${verification.id}/restart`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to restart verification");
+      }
+      const { verificationId } = await res.json();
+      router.push(`/dashboard/results/${verificationId}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to restart verification");
+      setRestarting(false);
+    }
+  }
 
   useEffect(() => {
     async function fetchVerification() {
@@ -795,6 +816,31 @@ export default function VerificationResultsDetail() {
 
       {/* Actions */}
       <div className="mt-6 flex gap-4">
+        {verification.status !== "in_progress" && (
+          <button
+            onClick={handleRestart}
+            disabled={restarting}
+            className={`inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-colors border ${
+              restarting
+                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                : "bg-white text-sky-600 border-sky-300 hover:bg-sky-50"
+            }`}
+          >
+            {restarting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+                Restarting...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Restart Verification
+              </>
+            )}
+          </button>
+        )}
         <Link
           href="/dashboard/new"
           className="inline-flex items-center gap-2 px-6 py-3 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition-colors"
