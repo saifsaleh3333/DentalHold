@@ -225,21 +225,25 @@ export async function POST(request: Request) {
       const practiceId = call?.metadata?.practiceId || null;
       const verificationId = call?.metadata?.verificationId || null;
 
-      // Extract structured data - check artifact.structuredOutputs first, then analysis.structuredData
+      // Extract structured data - check multiple locations
       let structuredResult: VapiStructuredResult = {};
 
-      // Primary location: artifact.structuredOutputs
+      // Primary: artifact.structuredOutputs (from tool calls during conversation)
       if (artifact?.structuredOutputs) {
         const toolOutputs = Object.values(artifact.structuredOutputs);
         if (toolOutputs.length > 0 && toolOutputs[0].result) {
           structuredResult = toolOutputs[0].result;
         }
       }
-      // Fallback: analysis.structuredData
+      // Fallback 1: analysis.structuredData as tool output wrapper
       else if (analysis?.structuredData) {
-        const toolOutputs = Object.values(analysis.structuredData);
-        if (toolOutputs.length > 0 && toolOutputs[0].result) {
-          structuredResult = toolOutputs[0].result;
+        const values = Object.values(analysis.structuredData);
+        if (values.length > 0 && typeof values[0] === "object" && values[0] !== null && "result" in (values[0] as unknown as Record<string, unknown>)) {
+          structuredResult = (values[0] as VapiToolOutput).result;
+        }
+        // Fallback 2: analysis.structuredData as flat object (from structuredDataPlan)
+        else if ("patient_eligible" in analysis.structuredData || "annual_maximum" in analysis.structuredData || "plan_type" in analysis.structuredData || "coverage_diagnostic" in analysis.structuredData) {
+          structuredResult = analysis.structuredData as unknown as VapiStructuredResult;
         }
       }
 
