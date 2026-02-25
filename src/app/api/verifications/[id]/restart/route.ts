@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { triggerVapiCall } from "@/lib/vapi";
+import { triggerVapiCall, normalizePhoneNumber } from "@/lib/vapi";
 
 export async function POST(
   request: Request,
@@ -36,10 +36,20 @@ export async function POST(
       );
     }
 
-    const phoneNumber = overrides.phoneNumber || original.phoneNumber;
-    if (!phoneNumber) {
+    const rawPhone = overrides.phoneNumber || original.phoneNumber;
+    if (!rawPhone) {
       return NextResponse.json(
         { error: "No phone number provided" },
+        { status: 400 }
+      );
+    }
+
+    let phoneNumber: string;
+    try {
+      phoneNumber = normalizePhoneNumber(rawPhone);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid phone number. Please enter a 10-digit US phone number." },
         { status: 400 }
       );
     }
