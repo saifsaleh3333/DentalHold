@@ -33,6 +33,8 @@ interface TriggerCallParams {
   subscriber?: SubscriberInfo | null;
   practiceId: string;
   verificationId: string;
+  isContinuation?: boolean;
+  existingBenefits?: Record<string, unknown>;
 }
 
 interface VapiCallResponse {
@@ -154,28 +156,212 @@ The patient is NOT the subscriber. If the rep asks "Is the patient the subscribe
 The patient is the subscriber. If the rep asks "Is the patient the subscriber?" say "Yes, the patient is the subscriber."`;
 }
 
+// Section labels matching the 14 verification question sections
+const BENEFITS_SECTIONS: Record<string, { label: string; fields: Record<string, string> }> = {
+  eligibility: {
+    label: "Eligibility & Plan Info",
+    fields: {
+      eligible: "Patient Eligible",
+      effectiveDate: "Effective Date",
+      inNetwork: "In Network",
+      planType: "Plan Type",
+      feeSchedule: "Fee Schedule",
+      planGroupName: "Plan/Group Name",
+      groupNumber: "Group Number",
+      claimsMailingAddress: "Claims Mailing Address",
+      payorId: "Payor ID",
+    },
+  },
+  benefits: {
+    label: "Benefit Details",
+    fields: {
+      annualMaximum: "Annual Maximum",
+      maximumUsed: "Maximum Used",
+      remainingMaximum: "Maximum Remaining",
+      maximumAppliesTo: "Maximum Applies To",
+      deductible: "Deductible",
+      deductibleMet: "Deductible Met",
+      deductibleAmountMet: "Deductible Amount Met",
+      deductibleAppliesTo: "Deductible Applies To",
+      orthoMaximum: "Ortho Maximum",
+      orthoMaximumUsed: "Ortho Maximum Used",
+    },
+  },
+  waitingPeriods: {
+    label: "Waiting Periods",
+    fields: {
+      "waitingPeriods.preventive": "Preventive Waiting Period",
+      "waitingPeriods.basic": "Basic Waiting Period",
+      "waitingPeriods.major": "Major Waiting Period",
+    },
+  },
+  clauses: {
+    label: "Clauses",
+    fields: {
+      missingToothClause: "Missing Tooth Clause",
+    },
+  },
+  coverage: {
+    label: "Coverage Percentages",
+    fields: {
+      "coverage.diagnostic": "Diagnostic Coverage",
+      "coverage.preventive": "Preventive Coverage",
+      "coverage.basic": "Basic Coverage",
+      "coverage.major": "Major Coverage",
+      "coverage.endodontics": "Endodontics Coverage",
+      "coverage.periodontics": "Periodontics Coverage",
+      "coverage.extractions": "Extractions Coverage",
+    },
+  },
+  diagnostic: {
+    label: "Diagnostic (X-Rays & Exams)",
+    fields: {
+      "diagnostic.bwx.frequency": "Bitewing Frequency",
+      "diagnostic.bwx.history": "Bitewing Last Done",
+      "diagnostic.pano.frequency": "Pano Frequency",
+      "diagnostic.pano.history": "Pano Last Done",
+      "diagnostic.fmx.frequency": "FMX Frequency",
+      "diagnostic.fmx.history": "FMX Last Done",
+      "diagnostic.d0150.frequency": "Comp Exam Frequency",
+      "diagnostic.d0150.history": "Comp Exam Last Done",
+      "diagnostic.d0120.frequency": "Periodic Exam Frequency",
+      "diagnostic.d0120.history": "Periodic Exam Last Done",
+      "diagnostic.d0140.frequency": "Limited Exam Frequency",
+      "diagnostic.examsShareFrequency": "Exams Share Frequency",
+    },
+  },
+  preventive: {
+    label: "Preventive",
+    fields: {
+      "preventive.d1110.frequency": "Prophy Frequency",
+      "preventive.d1110.history": "Prophy Last Done",
+      "preventive.d4346.coverage": "D4346 Coverage",
+      "preventive.d4346.frequency": "D4346 Frequency",
+      "preventive.d4346.sharesWithD1110": "D4346 Shares with Prophy",
+      "preventive.fluoride.covered": "Fluoride Covered",
+      "preventive.fluoride.ageLimit": "Fluoride Age Limit",
+    },
+  },
+  basic: {
+    label: "Basic",
+    fields: {
+      downgradeFillings: "Downgrade Fillings to Amalgam",
+    },
+  },
+  major: {
+    label: "Major",
+    fields: {
+      downgradeCrowns: "Downgrade Crowns",
+      "major.crowns.frequency": "Crown Replacement Frequency",
+    },
+  },
+  extractions: {
+    label: "Extractions",
+    fields: {
+      "extractions.d7210.coverage": "D7210 Surgical Extraction Coverage",
+      "extractions.d7140.coverage": "D7140 Simple Extraction Coverage",
+    },
+  },
+  periodontics: {
+    label: "Periodontics",
+    fields: {
+      "periodontics.d4910.coverage": "D4910 Perio Maintenance Coverage",
+      "periodontics.d4910.frequency": "D4910 Frequency",
+      "periodontics.d4341.frequency": "D4341 SRP Frequency",
+      "periodontics.d4341.history": "D4341 Last Done",
+      "periodontics.d4342.frequency": "D4342 Frequency",
+      "periodontics.d4342.history": "D4342 Last Done",
+    },
+  },
+  implants: {
+    label: "Implants",
+    fields: {
+      "implants.covered": "Implants Covered",
+      "implants.d6010.coverage": "D6010 Surgical Placement Coverage",
+      "implants.d6057.coverage": "D6057 Abutment Coverage",
+      "implants.d6058.coverage": "D6058 Implant Crown Coverage",
+    },
+  },
+  occlusialGuard: {
+    label: "Occlusal Guard",
+    fields: {
+      "occlusialGuard.covered": "Occlusal Guard Covered",
+      "occlusialGuard.coverage": "Occlusal Guard Coverage",
+    },
+  },
+  wrapUp: {
+    label: "Wrap Up",
+    fields: {
+      notes: "Notes / Limitations / Exclusions",
+    },
+  },
+};
+
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split(".");
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current === null || current === undefined || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+function formatBenefitValue(value: unknown): string {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return value;
+  return String(value);
+}
+
+function buildContinuationSection(existingBenefits: Record<string, unknown>): string {
+  const lines: string[] = ["## PREVIOUSLY COLLECTED DATA", "The following information was already collected in a previous call. Do NOT re-ask for any of this information.", ""];
+
+  for (const section of Object.values(BENEFITS_SECTIONS)) {
+    const sectionLines: string[] = [];
+    for (const [path, label] of Object.entries(section.fields)) {
+      const value = getNestedValue(existingBenefits, path);
+      if (value !== null && value !== undefined) {
+        sectionLines.push(`- ${label}: ${formatBenefitValue(value)}`);
+      }
+    }
+    if (sectionLines.length > 0) {
+      lines.push(`### ${section.label}`);
+      lines.push(...sectionLines);
+      lines.push("");
+    }
+  }
+
+  lines.push("ONLY ask questions for information not listed above. Skip directly to the first section with missing data.");
+  return lines.join("\n");
+}
+
 function buildSystemPrompt(
   practice: PracticeInfo,
   patient: PatientInfo,
-  subscriber?: SubscriberInfo | null
+  subscriber?: SubscriberInfo | null,
+  existingBenefits?: Record<string, unknown>
 ): string {
   const practiceSection = buildPracticeSection(practice);
   const patientSection = buildPatientSection(patient);
   const subscriberSection = buildSubscriberSection(subscriber);
+  const continuationSection = existingBenefits ? buildContinuationSection(existingBenefits) : "";
 
   return SYSTEM_PROMPT_TEMPLATE
     .replace("{{PRACTICE_INFO}}", practiceSection)
     .replace("{{PATIENT_INFO}}", patientSection)
     .replace("{{SUBSCRIBER_INFO}}", subscriberSection)
+    .replace("{{CONTINUATION_DATA}}", continuationSection)
     .replaceAll("{{PRACTICE_NAME}}", practice.name);
 }
 
 export async function triggerVapiCall(
   params: TriggerCallParams
 ): Promise<VapiCallResponse> {
-  const { phoneNumber, practice, patient, subscriber, practiceId, verificationId } = params;
+  const { phoneNumber, practice, patient, subscriber, practiceId, verificationId, isContinuation, existingBenefits } = params;
 
-  const systemPrompt = buildSystemPrompt(practice, patient, subscriber);
+  const systemPrompt = buildSystemPrompt(practice, patient, subscriber, isContinuation ? existingBenefits : undefined);
 
   // Define the full assistant inline — no base assistant, no ghost settings
   const payload = {
@@ -235,6 +421,7 @@ export async function triggerVapiCall(
     metadata: {
       practiceId,
       verificationId,
+      ...(isContinuation ? { isContinuation: "true" } : {}),
     },
   };
 
@@ -327,6 +514,8 @@ REMEMBER: You are the one making this call. You called THEM.
 {{PATIENT_INFO}}
 
 {{SUBSCRIBER_INFO}}
+
+{{CONTINUATION_DATA}}
 
 ## Rules
 - ONLY give information when the rep asks for it

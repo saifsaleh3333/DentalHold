@@ -168,6 +168,45 @@ interface VapiWebhookPayload {
   };
 }
 
+// Deep merge benefits: fill in nulls from incoming, don't overwrite existing data with null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mergeBenefits(existing: Record<string, any>, incoming: Record<string, any>): Record<string, any> {
+  const result = { ...existing };
+
+  for (const key of Object.keys(incoming)) {
+    const incomingVal = incoming[key];
+    const existingVal = existing[key];
+
+    // Skip incoming null/undefined — don't overwrite existing data with nothing
+    if (incomingVal === null || incomingVal === undefined) continue;
+
+    // Special case: concatenate notes fields
+    if (key === "notes" && typeof existingVal === "string" && typeof incomingVal === "string") {
+      result[key] = existingVal + "\n---\n" + incomingVal;
+      continue;
+    }
+
+    // Recurse into nested objects (not arrays or primitives)
+    if (
+      typeof incomingVal === "object" && !Array.isArray(incomingVal) &&
+      typeof existingVal === "object" && existingVal !== null && !Array.isArray(existingVal)
+    ) {
+      result[key] = mergeBenefits(existingVal, incomingVal);
+      continue;
+    }
+
+    // For primitives: if existing is null/undefined, take incoming; if both exist, take incoming (trust newer data)
+    if (existingVal === null || existingVal === undefined) {
+      result[key] = incomingVal;
+    } else {
+      // Both exist — take incoming (newer data)
+      result[key] = incomingVal;
+    }
+  }
+
+  return result;
+}
+
 export async function POST(request: Request) {
   try {
     const payload: VapiWebhookPayload = await request.json();
@@ -372,22 +411,86 @@ export async function POST(request: Request) {
       let verification;
 
       if (verificationId) {
-        verification = await prisma.verification.update({
-          where: { id: verificationId },
-          data: {
-            status,
-            callDuration,
-            recordingUrl: artifact?.recordingUrl || artifact?.stereoRecordingUrl || call?.recordingUrl,
-            transcript: artifact?.transcript || call?.transcript,
-            benefits: JSON.stringify(benefits),
-            referenceNumber: structuredResult.call_reference || structuredResult.reference_number,
-            repName: structuredResult.rep_name,
-            // Only overwrite patient info if structured output has real values
-            ...(patientName && patientName !== "Unknown Patient" ? { patientName } : {}),
-            ...(insuranceCarrier ? { insuranceCarrier } : {}),
-          },
-        });
-        console.log("Verification updated:", verification.id);
+        const isContinuation = call?.metadata?.isContinuation === "true";
+
+        if (isContinuation) {
+          // Fetch existing record to merge data
+          const existingRecord = await prisma.verification.findUnique({
+            where: { id: verificationId },
+          });
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let finalBenefits: Record<string, any> = benefits;
+          let finalTranscript = artifact?.transcript || call?.transcript;
+          let finalReferenceNumber = structuredResult.call_reference || structuredResult.reference_number;
+          let finalRepName = structuredResult.rep_name;
+          let finalStatus = status;
+
+          if (existingRecord) {
+            // Merge benefits: existing + new incoming
+            if (existingRecord.benefits) {
+              try {
+                const existingBenefits = JSON.parse(existingRecord.benefits as string);
+                finalBenefits = mergeBenefits(existingBenefits, benefits);
+              } catch {
+                // If parse fails, use new benefits as-is
+              }
+            }
+
+            // Concatenate transcripts with separator
+            if (existingRecord.transcript && finalTranscript) {
+              finalTranscript = existingRecord.transcript + "\n\n--- CONTINUATION CALL ---\n\n" + finalTranscript;
+            } else if (existingRecord.transcript) {
+              finalTranscript = existingRecord.transcript;
+            }
+
+            // Keep existing reference/rep if continuation didn't get new ones
+            if (!finalReferenceNumber && existingRecord.referenceNumber) {
+              finalReferenceNumber = existingRecord.referenceNumber;
+            }
+            if (!finalRepName && existingRecord.repName) {
+              finalRepName = existingRecord.repName;
+            }
+
+            // Don't downgrade from completed to failed if existing benefits are valid
+            if (finalStatus === "failed" && existingRecord.status === "completed") {
+              finalStatus = "completed";
+            }
+          }
+
+          verification = await prisma.verification.update({
+            where: { id: verificationId },
+            data: {
+              status: finalStatus,
+              callDuration,
+              recordingUrl: artifact?.recordingUrl || artifact?.stereoRecordingUrl || call?.recordingUrl || existingRecord?.recordingUrl,
+              transcript: finalTranscript,
+              benefits: JSON.stringify(finalBenefits),
+              referenceNumber: finalReferenceNumber,
+              repName: finalRepName,
+              ...(patientName && patientName !== "Unknown Patient" ? { patientName } : {}),
+              ...(insuranceCarrier ? { insuranceCarrier } : {}),
+            },
+          });
+          console.log("Verification updated (continuation merge):", verification.id);
+        } else {
+          verification = await prisma.verification.update({
+            where: { id: verificationId },
+            data: {
+              status,
+              callDuration,
+              recordingUrl: artifact?.recordingUrl || artifact?.stereoRecordingUrl || call?.recordingUrl,
+              transcript: artifact?.transcript || call?.transcript,
+              benefits: JSON.stringify(benefits),
+              referenceNumber: structuredResult.call_reference || structuredResult.reference_number,
+              repName: structuredResult.rep_name,
+              // Only overwrite patient info if structured output has real values
+              ...(patientName && patientName !== "Unknown Patient" ? { patientName } : {}),
+              ...(insuranceCarrier ? { insuranceCarrier } : {}),
+            },
+          });
+          console.log("Verification updated:", verification.id);
+        }
       } else {
         verification = await prisma.verification.create({
           data: {

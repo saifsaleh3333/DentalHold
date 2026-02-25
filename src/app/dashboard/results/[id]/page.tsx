@@ -172,6 +172,32 @@ interface Verification {
   repName?: string;
 }
 
+// Check if a verification has significant missing data
+function isVerificationIncomplete(benefits: Benefits | null): boolean {
+  if (!benefits) return true;
+
+  const criticalFields = [
+    benefits.eligible,
+    benefits.annualMaximum,
+    benefits.deductible,
+    benefits.coverage?.diagnostic,
+    benefits.coverage?.preventive,
+    benefits.coverage?.basic,
+    benefits.coverage?.major,
+    benefits.coverage?.endodontics,
+    benefits.coverage?.periodontics,
+    benefits.diagnostic?.bwx?.frequency,
+    benefits.preventive?.d1110?.frequency,
+    benefits.implants?.covered,
+  ];
+
+  const missingCount = criticalFields.filter(
+    (v) => v === null || v === undefined
+  ).length;
+
+  return missingCount >= 3;
+}
+
 // Helper: table cell
 function Cell({ label, value, className = "" }: { label: string; value?: string | number | boolean | null; className?: string }) {
   const displayValue = value === undefined || value === null ? "—" :
@@ -230,6 +256,27 @@ export default function VerificationResultsDetail() {
   const [error, setError] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+
+  async function handleContinue() {
+    if (!verification || continuing) return;
+    setContinuing(true);
+    try {
+      const res = await fetch(`/api/verifications/${verification.id}/continue`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to continue verification");
+      }
+      // Same verification ID — just update local state to trigger auto-poll
+      setVerification((prev) => prev ? { ...prev, status: "in_progress" } : prev);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to continue verification");
+    } finally {
+      setContinuing(false);
+    }
+  }
 
   async function handleRestart() {
     if (!verification || restarting) return;
@@ -445,6 +492,21 @@ export default function VerificationResultsDetail() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <p className="text-red-700 font-medium">Verification incomplete - some data may be missing</p>
+          </div>
+        </div>
+      )}
+
+      {isVerificationIncomplete(b ?? null) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-amber-700 font-medium">
+                Some data is missing from this verification. Click Continue Verification to pick up where Dani left off.
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -816,6 +878,32 @@ export default function VerificationResultsDetail() {
 
       {/* Actions */}
       <div className="mt-6 flex gap-4">
+        {verification.status !== "in_progress" && isVerificationIncomplete(b ?? null) && (
+          <button
+            onClick={handleContinue}
+            disabled={continuing}
+            className={`inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-colors border ${
+              continuing
+                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                : "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100"
+            }`}
+          >
+            {continuing ? (
+              <>
+                <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                Continuing...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Continue Verification
+              </>
+            )}
+          </button>
+        )}
         {verification.status !== "in_progress" && (
           <button
             onClick={handleRestart}
