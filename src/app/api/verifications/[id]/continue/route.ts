@@ -15,6 +15,15 @@ export async function POST(
 
     const { id } = await params;
 
+    // Parse optional overrides from request body
+    let overrides: { phoneNumber?: string } = {};
+    try {
+      const body = await request.json();
+      if (body.phoneNumber) overrides.phoneNumber = body.phoneNumber;
+    } catch {
+      // No body or invalid JSON — that's fine, use original data
+    }
+
     // Fetch existing verification
     const existing = await prisma.verification.findFirst({
       where: { id, practiceId: session.user.practiceId },
@@ -34,9 +43,10 @@ export async function POST(
       );
     }
 
-    if (!existing.phoneNumber) {
+    const phoneNumber = overrides.phoneNumber || existing.phoneNumber;
+    if (!phoneNumber) {
       return NextResponse.json(
-        { error: "Verification has no phone number" },
+        { error: "No phone number provided" },
         { status: 400 }
       );
     }
@@ -70,13 +80,13 @@ export async function POST(
     // Set existing record back to in_progress (reuse, don't create new)
     await prisma.verification.update({
       where: { id: existing.id },
-      data: { status: "in_progress" },
+      data: { status: "in_progress", phoneNumber },
     });
 
     // Trigger Vapi call with existing benefits for continuation
     try {
       const vapiCall = await triggerVapiCall({
-        phoneNumber: existing.phoneNumber,
+        phoneNumber,
         practice,
         patient: {
           patientName: existing.patientName,

@@ -164,6 +164,7 @@ interface Verification {
   memberId: string;
   patientSSN?: string;
   insuranceCarrier: string;
+  phoneNumber?: string;
   callDuration?: string;
   recordingUrl?: string;
   transcript?: string;
@@ -257,13 +258,26 @@ export default function VerificationResultsDetail() {
   const [showTranscript, setShowTranscript] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [continuing, setContinuing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState<"restart" | "continue" | null>(null);
+  const [editPhoneNumber, setEditPhoneNumber] = useState("");
 
-  async function handleContinue() {
+  function openEditModal(action: "restart" | "continue") {
+    setEditPhoneNumber(verification?.phoneNumber || "");
+    setShowEditModal(action);
+  }
+
+  async function handleContinue(phoneOverride?: string) {
     if (!verification || continuing) return;
+    setShowEditModal(null);
     setContinuing(true);
     try {
+      const body: Record<string, string> = {};
+      if (phoneOverride) body.phoneNumber = phoneOverride;
+
       const res = await fetch(`/api/verifications/${verification.id}/continue`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -278,12 +292,18 @@ export default function VerificationResultsDetail() {
     }
   }
 
-  async function handleRestart() {
+  async function handleRestart(phoneOverride?: string) {
     if (!verification || restarting) return;
+    setShowEditModal(null);
     setRestarting(true);
     try {
+      const body: Record<string, string> = {};
+      if (phoneOverride) body.phoneNumber = phoneOverride;
+
       const res = await fetch(`/api/verifications/${verification.id}/restart`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -880,7 +900,7 @@ export default function VerificationResultsDetail() {
       <div className="mt-6 flex gap-4">
         {verification.status !== "in_progress" && isVerificationIncomplete(b ?? null) && (
           <button
-            onClick={handleContinue}
+            onClick={() => openEditModal("continue")}
             disabled={continuing}
             className={`inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-colors border ${
               continuing
@@ -906,7 +926,7 @@ export default function VerificationResultsDetail() {
         )}
         {verification.status !== "in_progress" && (
           <button
-            onClick={handleRestart}
+            onClick={() => openEditModal("restart")}
             disabled={restarting}
             className={`inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-colors border ${
               restarting
@@ -939,6 +959,57 @@ export default function VerificationResultsDetail() {
           New Verification
         </Link>
       </div>
+
+      {/* Edit Phone Number Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">
+              {showEditModal === "continue" ? "Continue Verification" : "Restart Verification"}
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Edit the phone number if needed, then confirm to start the call.
+            </p>
+
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={editPhoneNumber}
+              onChange={(e) => setEditPhoneNumber(e.target.value)}
+              placeholder="+18005551234"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 mb-4"
+            />
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowEditModal(null)}
+                className="px-4 py-2 text-slate-600 font-medium rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const phone = editPhoneNumber.trim() || undefined;
+                  if (showEditModal === "continue") {
+                    handleContinue(phone);
+                  } else {
+                    handleRestart(phone);
+                  }
+                }}
+                className={`px-4 py-2 font-semibold rounded-lg transition-colors text-white ${
+                  showEditModal === "continue"
+                    ? "bg-amber-500 hover:bg-amber-600"
+                    : "bg-sky-500 hover:bg-sky-600"
+                }`}
+              >
+                {showEditModal === "continue" ? "Continue Call" : "Restart Call"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

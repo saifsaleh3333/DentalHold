@@ -15,6 +15,15 @@ export async function POST(
 
     const { id } = await params;
 
+    // Parse optional overrides from request body
+    let overrides: { phoneNumber?: string } = {};
+    try {
+      const body = await request.json();
+      if (body.phoneNumber) overrides.phoneNumber = body.phoneNumber;
+    } catch {
+      // No body or invalid JSON — that's fine, use original data
+    }
+
     // Fetch original verification
     const original = await prisma.verification.findFirst({
       where: { id, practiceId: session.user.practiceId },
@@ -27,9 +36,10 @@ export async function POST(
       );
     }
 
-    if (!original.phoneNumber) {
+    const phoneNumber = overrides.phoneNumber || original.phoneNumber;
+    if (!phoneNumber) {
       return NextResponse.json(
-        { error: "Original verification has no phone number" },
+        { error: "No phone number provided" },
         { status: 400 }
       );
     }
@@ -53,7 +63,7 @@ export async function POST(
         memberId: original.memberId,
         groupNumber: original.groupNumber,
         insuranceCarrier: original.insuranceCarrier,
-        phoneNumber: original.phoneNumber,
+        phoneNumber,
         patientSSN: original.patientSSN,
         practiceId: session.user.practiceId,
         createdById: session.user.id,
@@ -63,7 +73,7 @@ export async function POST(
     // Trigger Vapi call with same data
     try {
       const vapiCall = await triggerVapiCall({
-        phoneNumber: original.phoneNumber,
+        phoneNumber,
         practice,
         patient: {
           patientName: original.patientName,
