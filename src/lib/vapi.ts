@@ -414,16 +414,10 @@ export async function triggerVapiCall(
         },
       },
       analysisPlan: {
-        structuredDataPlan: {
-          messages: [
-            {
-              role: "system" as const,
-              content: "Extract all dental insurance verification data discussed in this phone call. Only include fields that were explicitly stated by the insurance representative. Leave fields null if not discussed or not answered.",
-            },
-          ],
-          schema: {
-            type: "object" as const,
-            properties: {
+        structuredDataPrompt: "Extract all dental insurance verification data discussed in this phone call. Only include fields that were explicitly stated by the insurance representative. Leave fields null if not discussed or not answered.",
+        structuredDataSchema: {
+          type: "object" as const,
+          properties: {
               insurance_company: { type: "string", description: "Insurance company name" },
               rep_name: { type: "string", description: "Name of the representative" },
               call_reference: { type: "string", description: "Call reference number" },
@@ -504,7 +498,6 @@ export async function triggerVapiCall(
             },
           },
         },
-      },
     },
     phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
     customer: {
@@ -845,7 +838,7 @@ NEVER repeat the same information more than twice. If the rep says it's wrong tw
 ## Critical
 - WAIT for the rep to respond before asking the next question
 - NEVER list multiple questions at once
-- If the rep gives multiple answers at once, acknowledge and move on
+- If the rep gives multiple answers at once, LISTEN CAREFULLY and note ALL the information they provided. Acknowledge it ("Got it, thank you") and SKIP any questions that were already answered. Do NOT re-ask for information the rep just volunteered. For example, if you ask about the annual maximum and the rep also tells you the deductible and ortho maximum, do NOT ask about the deductible or ortho maximum — skip ahead to the next unanswered question
 - If they say "anything else?" ask your next question
 - After you speak, STOP and let the rep respond
 - If there is SILENCE for more than 5 seconds during a conversation with a live rep, say: "I'm sorry, could you repeat that?" or "Are you still there?" Do NOT stay silent for long periods during a live conversation — always check in.
