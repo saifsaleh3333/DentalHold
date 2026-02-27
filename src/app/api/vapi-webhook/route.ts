@@ -1,6 +1,90 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const STRUCTURED_DATA_SCHEMA = {
+  insurance_company: "string", rep_name: "string", call_reference: "string",
+  subscriber_id: "string", patient_name: "string", patient_dob: "string",
+  subscriber_name: "string", subscriber_dob: "string", effective_date: "string",
+  relationship_to_subscriber: "string", patient_eligible: "boolean",
+  in_network: "boolean", plan_type: "string", fee_schedule: "string",
+  plan_group_name: "string", group_number: "string", claims_mailing_address: "string",
+  payor_id: "string", annual_maximum: "number", maximum_used: "number",
+  maximum_remaining: "number", maximum_applies_to: "string", deductible: "number",
+  deductible_met: "boolean", deductible_amount_met: "number",
+  deductible_applies_to: "string", ortho_maximum: "number", ortho_maximum_used: "number",
+  waiting_period_preventive: "string", waiting_period_basic: "string",
+  waiting_period_major: "string", missing_tooth_clause: "boolean",
+  coverage_diagnostic: "number", coverage_preventive: "number", coverage_basic: "number",
+  coverage_major: "number", coverage_extractions: "number", coverage_endodontics: "number",
+  coverage_periodontics: "number", frequency_bwx: "string", history_bwx: "string",
+  frequency_pano: "string", history_pano: "string", frequency_fmx: "string",
+  history_fmx: "string", frequency_d0150: "string", history_d0150: "string",
+  frequency_d0120: "string", history_d0120: "string", frequency_d0140: "string",
+  history_d0140: "string", exams_share_frequency: "boolean", frequency_d1110: "string",
+  history_d1110: "string", coverage_d4346: "number", frequency_d4346: "string",
+  d4346_shares_with_d1110: "boolean", fluoride_covered: "boolean",
+  fluoride_age_limit: "string", downgrade_fillings: "boolean", downgrade_crowns: "boolean",
+  frequency_crowns: "string", coverage_d7210: "number", coverage_d7140: "number",
+  coverage_d4910: "number", frequency_d4910: "string", frequency_d4341: "string",
+  history_d4341: "string", frequency_d4342: "string", history_d4342: "string",
+  implants_covered: "boolean", coverage_d6010: "number", coverage_d6057: "number",
+  coverage_d6058: "number", occlusal_guard_covered: "boolean",
+  occlusal_guard_coverage: "number", notes: "string",
+};
+
+async function parseTranscriptWithAI(transcript: string): Promise<VapiStructuredResult> {
+  if (!process.env.OPENAI_API_KEY || !transcript) return {};
+
+  try {
+    const fieldList = Object.entries(STRUCTURED_DATA_SCHEMA)
+      .map(([k, t]) => `  "${k}": ${t}`)
+      .join("\n");
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: `Extract dental insurance verification data from this phone call transcript. Return a JSON object with ONLY fields that were explicitly stated by the insurance representative. Use null for anything not discussed.\n\nFields:\n${fieldList}\n\nReturn valid JSON only.`,
+          },
+          {
+            role: "user",
+            content: transcript,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("OpenAI API error:", response.status, await response.text());
+      return {};
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return {};
+
+    const parsed = JSON.parse(content);
+    // Strip null values
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v !== null && v !== undefined) result[k] = v;
+    }
+    return result as VapiStructuredResult;
+  } catch (error) {
+    console.error("Failed to parse transcript with OpenAI:", error);
+    return {};
+  }
+}
+
 // Vapi structured output format - comprehensive dental insurance verification
 interface VapiStructuredResult {
   // Header Info
@@ -244,6 +328,16 @@ export async function POST(request: Request) {
         // Fallback 2: analysis.structuredData as flat object (from structuredDataPlan)
         else if ("patient_eligible" in analysis.structuredData || "annual_maximum" in analysis.structuredData || "plan_type" in analysis.structuredData || "coverage_diagnostic" in analysis.structuredData) {
           structuredResult = analysis.structuredData as unknown as VapiStructuredResult;
+        }
+      }
+
+      // Fallback 3: Parse transcript with OpenAI if no structured data from Vapi
+      const hasStructuredData = structuredResult.patient_eligible !== undefined || structuredResult.annual_maximum !== undefined || structuredResult.plan_type !== undefined;
+      if (!hasStructuredData) {
+        const transcript = artifact?.transcript || call?.transcript;
+        if (transcript) {
+          console.log("No structured data from Vapi — parsing transcript with OpenAI");
+          structuredResult = await parseTranscriptWithAI(transcript);
         }
       }
 
