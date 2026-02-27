@@ -227,7 +227,7 @@ function CodeRow({ code, label, detail }: { code: string; label: string; detail?
   return (
     <div className="border-t border-slate-100 pt-2 mt-2 space-y-1">
       <p className="text-xs font-semibold text-slate-600">{code} <span className="font-normal text-slate-400">({label})</span></p>
-      {detail?.coverage !== undefined && (
+      {detail?.coverage != null && (
         <div className="flex justify-between text-sm">
           <span className="text-slate-500">Coverage</span>
           <span className="font-medium">{detail.coverage}%</span>
@@ -608,20 +608,20 @@ export default function VerificationResultsDetail() {
         <div className="grid grid-cols-3 border-b border-slate-200">
           <div className="border-r border-slate-200">
             <Cell label="General Maximum" value={b?.annualMaximum ? `$${b.annualMaximum.toLocaleString()}` : undefined} />
-            <Cell label="Maximum Used" value={b?.maximumUsed !== undefined ? `$${b.maximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
+            <Cell label="Maximum Used" value={b?.maximumUsed != null ? `$${b.maximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
             <div className="p-3 border-t border-slate-200">
               <p className="text-xs text-slate-500 mb-1">Maximum Applies to:</p>
               <p className="font-medium text-slate-900">{b?.maximumAppliesTo || "Prev / Basic / Major"}</p>
             </div>
           </div>
           <div className="border-r border-slate-200">
-            <Cell label="Deductible" value={b?.deductible !== undefined ? `$${b.deductible}` : undefined} />
+            <Cell label="Deductible" value={b?.deductible != null ? `$${b.deductible}` : undefined} />
             <Cell
               label="Deductible Met"
               value={
                 b?.deductibleMet === true ? "Yes" :
                 b?.deductibleMet === false ? "No" :
-                b?.deductibleAmountMet !== undefined ? `$${b.deductibleAmountMet} met` :
+                b?.deductibleAmountMet != null ? `$${b.deductibleAmountMet} met` :
                 undefined
               }
               className="border-t border-slate-200"
@@ -633,7 +633,7 @@ export default function VerificationResultsDetail() {
           </div>
           <div>
             <Cell label="Ortho Maximum" value={b?.orthoMaximum ? `$${b.orthoMaximum.toLocaleString()}` : undefined} />
-            <Cell label="Ortho Max. Used" value={b?.orthoMaximumUsed !== undefined ? `$${b.orthoMaximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
+            <Cell label="Ortho Max. Used" value={b?.orthoMaximumUsed != null ? `$${b.orthoMaximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
           </div>
         </div>
 
@@ -645,7 +645,7 @@ export default function VerificationResultsDetail() {
           {/* Diagnostic */}
           <div className="border-r border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-700">Diagnostic</p>
-            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.diagnostic !== undefined ? `${b.coverage.diagnostic}%` : "—"}</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.diagnostic != null ? `${b.coverage.diagnostic}%` : "—"}</p>
 
             <CodeRow code="D0220/D0274" label="Bitewings" detail={diag.bwx} />
             <CodeRow code="D0330" label="Pano" detail={diag.pano} />
@@ -654,7 +654,7 @@ export default function VerificationResultsDetail() {
             <CodeRow code="D0120" label="Periodic Exam" detail={diag.d0120} />
             <CodeRow code="D0140" label="Limited Exam" detail={diag.d0140} />
 
-            {diag.examsShareFrequency !== undefined && (
+            {diag.examsShareFrequency != null && (
               <div className="border-t border-slate-100 pt-2 mt-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Exams share freq?</span>
@@ -667,13 +667,13 @@ export default function VerificationResultsDetail() {
           {/* Preventive */}
           <div className="border-r border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-700">Preventive</p>
-            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.preventive !== undefined ? `${b.coverage.preventive}%` : "—"}</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.preventive != null ? `${b.coverage.preventive}%` : "—"}</p>
 
             <CodeRow code="D1110" label="Prophy" detail={prev.d1110} />
 
             <div className="border-t border-slate-100 pt-2 mt-2 space-y-1">
               <p className="text-xs font-semibold text-slate-600">D4346 <span className="font-normal text-slate-400">(Gingivitis Scaling)</span></p>
-              {prev.d4346.coverage !== undefined && (
+              {prev.d4346.coverage != null && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Coverage</span>
                   <span className="font-medium">{prev.d4346.coverage}%</span>
@@ -687,7 +687,7 @@ export default function VerificationResultsDetail() {
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Shares w/ D1110?</span>
-                <span className="font-medium">{prev.d4346.sharesWithD1110 !== undefined ? (prev.d4346.sharesWithD1110 ? "Yes" : "No") : "—"}</span>
+                <span className="font-medium">{prev.d4346.sharesWithD1110 != null ? (prev.d4346.sharesWithD1110 ? "Yes" : "No") : "—"}</span>
               </div>
             </div>
 
@@ -695,7 +695,7 @@ export default function VerificationResultsDetail() {
               <p className="text-xs font-semibold text-slate-600">D1208 <span className="font-normal text-slate-400">(Fluoride)</span></p>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Covered</span>
-                <span className="font-medium">{prev.fluoride.covered !== undefined ? (prev.fluoride.covered ? "Yes" : "No") : "—"}</span>
+                <span className="font-medium">{prev.fluoride.covered != null ? (prev.fluoride.covered ? "Yes" : "No") : "—"}</span>
               </div>
               {prev.fluoride.ageLimit && (
                 <div className="flex justify-between text-sm">
@@ -709,15 +709,15 @@ export default function VerificationResultsDetail() {
           {/* Basic + Endodontics */}
           <div className="p-4">
             <p className="text-sm font-semibold text-slate-700">Basic</p>
-            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.basic !== undefined ? `${b.coverage.basic}%` : "—"}</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.basic != null ? `${b.coverage.basic}%` : "—"}</p>
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">Downgrade fillings?</span>
-              <span className="font-medium">{b?.downgradeFillings !== undefined ? (b.downgradeFillings ? "Yes" : "No") : "—"}</span>
+              <span className="font-medium">{b?.downgradeFillings != null ? (b.downgradeFillings ? "Yes" : "No") : "—"}</span>
             </div>
 
             <div className="mt-6 pt-4 border-t border-slate-200">
               <p className="text-sm font-semibold text-slate-700">Endodontics</p>
-              <p className="text-2xl font-bold text-slate-900">{b?.coverage?.endodontics !== undefined ? `${b.coverage.endodontics}%` : "—"}</p>
+              <p className="text-2xl font-bold text-slate-900">{b?.coverage?.endodontics != null ? `${b.coverage.endodontics}%` : "—"}</p>
             </div>
           </div>
         </div>
@@ -727,10 +727,10 @@ export default function VerificationResultsDetail() {
           {/* Major */}
           <div className="border-r border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-700">Major</p>
-            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.major !== undefined ? `${b.coverage.major}%` : "—"}</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.major != null ? `${b.coverage.major}%` : "—"}</p>
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">Downgrade crowns?</span>
-              <span className="font-medium">{b?.downgradeCrowns !== undefined ? (b.downgradeCrowns ? "Yes" : "No") : "—"}</span>
+              <span className="font-medium">{b?.downgradeCrowns != null ? (b.downgradeCrowns ? "Yes" : "No") : "—"}</span>
             </div>
             {(b?.major?.crowns?.frequency || b?.frequencies?.crowns) && (
               <div className="flex justify-between text-sm mt-1">
@@ -743,16 +743,16 @@ export default function VerificationResultsDetail() {
           {/* Extractions */}
           <div className="border-r border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-700">Extractions</p>
-            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.extractions !== undefined ? `${b.coverage.extractions}%` : "—"}</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.extractions != null ? `${b.coverage.extractions}%` : "—"}</p>
 
             <div className="space-y-1 border-t border-slate-100 pt-2">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">D7210 (Surgical)</span>
-                <span className="font-medium">{extract.d7210.coverage !== undefined ? `${extract.d7210.coverage}%` : "—"}</span>
+                <span className="font-medium">{extract.d7210.coverage != null ? `${extract.d7210.coverage}%` : "—"}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">D7140 (Simple)</span>
-                <span className="font-medium">{extract.d7140.coverage !== undefined ? `${extract.d7140.coverage}%` : "—"}</span>
+                <span className="font-medium">{extract.d7140.coverage != null ? `${extract.d7140.coverage}%` : "—"}</span>
               </div>
             </div>
           </div>
@@ -760,7 +760,7 @@ export default function VerificationResultsDetail() {
           {/* Periodontics */}
           <div className="p-4">
             <p className="text-sm font-semibold text-slate-700">Periodontics</p>
-            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.periodontics !== undefined ? `${b.coverage.periodontics}%` : "—"}</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.periodontics != null ? `${b.coverage.periodontics}%` : "—"}</p>
 
             <CodeRow code="D4910" label="Perio Maint." detail={perio.d4910} />
             <CodeRow code="D4341" label="SRP 4+ teeth" detail={perio.d4341} />
@@ -779,22 +779,22 @@ export default function VerificationResultsDetail() {
                 b?.implants?.covered === false ? 'bg-red-100 text-red-700' :
                 'bg-slate-100 text-slate-600'
               }`}>
-                {b?.implants?.covered !== undefined ? (b.implants.covered ? "Yes" : "No") : "—"}
+                {b?.implants?.covered != null ? (b.implants.covered ? "Yes" : "No") : "—"}
               </span>
             </div>
             {b?.implants?.covered && (
               <div className="space-y-1 border-t border-slate-100 pt-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">D6010 (Implant Body)</span>
-                  <span className="font-medium">{b.implants.d6010?.coverage !== undefined ? `${b.implants.d6010.coverage}%` : "—"}</span>
+                  <span className="font-medium">{b.implants.d6010?.coverage != null ? `${b.implants.d6010.coverage}%` : "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">D6057 (Abutment)</span>
-                  <span className="font-medium">{b.implants.d6057?.coverage !== undefined ? `${b.implants.d6057.coverage}%` : "—"}</span>
+                  <span className="font-medium">{b.implants.d6057?.coverage != null ? `${b.implants.d6057.coverage}%` : "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">D6058 (Crown)</span>
-                  <span className="font-medium">{b.implants.d6058?.coverage !== undefined ? `${b.implants.d6058.coverage}%` : "—"}</span>
+                  <span className="font-medium">{b.implants.d6058?.coverage != null ? `${b.implants.d6058.coverage}%` : "—"}</span>
                 </div>
               </div>
             )}
@@ -809,10 +809,10 @@ export default function VerificationResultsDetail() {
                 b?.occlusialGuard?.covered === false ? 'bg-red-100 text-red-700' :
                 'bg-slate-100 text-slate-600'
               }`}>
-                {b?.occlusialGuard?.covered !== undefined ? (b.occlusialGuard.covered ? "Yes" : "No") : "—"}
+                {b?.occlusialGuard?.covered != null ? (b.occlusialGuard.covered ? "Yes" : "No") : "—"}
               </span>
             </div>
-            {b?.occlusialGuard?.coverage !== undefined && (
+            {b?.occlusialGuard?.coverage != null && (
               <div className="border-t border-slate-100 pt-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Coverage</span>
