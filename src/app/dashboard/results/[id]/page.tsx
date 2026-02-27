@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { isVerificationIncomplete, getDisplayStatus } from "@/lib/verification-status";
 
 interface CodeDetail {
   frequency?: string;
@@ -171,32 +172,6 @@ interface Verification {
   benefits: Benefits | null;
   referenceNumber?: string;
   repName?: string;
-}
-
-// Check if a verification has significant missing data
-function isVerificationIncomplete(benefits: Benefits | null): boolean {
-  if (!benefits) return true;
-
-  const criticalFields = [
-    benefits.eligible,
-    benefits.annualMaximum,
-    benefits.deductible,
-    benefits.coverage?.diagnostic,
-    benefits.coverage?.preventive,
-    benefits.coverage?.basic,
-    benefits.coverage?.major,
-    benefits.coverage?.endodontics,
-    benefits.coverage?.periodontics,
-    benefits.diagnostic?.bwx?.frequency,
-    benefits.preventive?.d1110?.frequency,
-    benefits.implants?.covered,
-  ];
-
-  const missingCount = criticalFields.filter(
-    (v) => v === null || v === undefined
-  ).length;
-
-  return missingCount >= 3;
 }
 
 // Helper: table cell
@@ -505,31 +480,38 @@ export default function VerificationResultsDetail() {
 
       {verification.status !== "in_progress" && (<>
       {/* Status Banner */}
-      {verification.status === "failed" && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-red-700 font-medium">Verification incomplete - some data may be missing</p>
-          </div>
-        </div>
-      )}
+      {(() => {
+        const displayStatus = getDisplayStatus(verification.status, b ?? null);
+        return (
+          <>
+            {displayStatus === "failed" && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-red-700 font-medium">Verification failed - no data was collected</p>
+                </div>
+              </div>
+            )}
 
-      {isVerificationIncomplete(b ?? null) && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-amber-700 font-medium">
-                Some data is missing from this verification. Click Continue Verification to pick up where Dani left off.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+            {displayStatus === "incomplete" && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-amber-700 font-medium">
+                      Verification Incomplete — some critical data is missing. Click Continue Verification to pick up where Dani left off.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Main Form */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">

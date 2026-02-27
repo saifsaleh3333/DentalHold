@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getDisplayStatus } from "@/lib/verification-status";
 
 interface Verification {
   id: string;
@@ -13,6 +14,25 @@ interface Verification {
   insuranceCarrier: string;
   benefits: {
     eligible?: boolean;
+    annualMaximum?: number;
+    deductible?: number;
+    coverage?: {
+      diagnostic?: number;
+      preventive?: number;
+      basic?: number;
+      major?: number;
+      endodontics?: number;
+      periodontics?: number;
+    };
+    diagnostic?: {
+      bwx?: { frequency?: string };
+    };
+    preventive?: {
+      d1110?: { frequency?: string };
+    };
+    implants?: {
+      covered?: boolean;
+    };
   } | null;
 }
 
@@ -52,11 +72,15 @@ export default function VerificationHistory() {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
+  const displayStatuses = verifications.map((v) =>
+    getDisplayStatus(v.status, v.benefits)
+  );
+
   const stats = {
     total: verifications.length,
-    inProgress: verifications.filter((v) => v.status === "in_progress").length,
-    completed: verifications.filter((v) => v.status === "completed").length,
-    timeSaved: `${Math.round(verifications.filter((v) => v.status === "completed").length * 0.5)}h`,
+    inProgress: displayStatuses.filter((s) => s === "in_progress").length,
+    completed: displayStatuses.filter((s) => s === "completed").length,
+    incomplete: displayStatuses.filter((s) => s === "incomplete").length,
   };
 
   return (
@@ -124,14 +148,14 @@ export default function VerificationHistory() {
 
         <div className="bg-white p-6 rounded-xl border border-slate-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{stats.timeSaved}</p>
-              <p className="text-sm text-slate-500">Time Saved</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.incomplete}</p>
+              <p className="text-sm text-slate-500">Incomplete</p>
             </div>
           </div>
         </div>
@@ -166,7 +190,9 @@ export default function VerificationHistory() {
           </div>
         ) : (
           <div className="divide-y divide-slate-200">
-            {verifications.map((verification) => (
+            {verifications.map((verification, index) => {
+              const displayStatus = displayStatuses[index];
+              return (
               <div
                 key={verification.id}
                 className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
@@ -191,38 +217,59 @@ export default function VerificationHistory() {
                 <div className="flex items-center gap-6">
                   <p className="text-sm text-slate-500">{formatDate(verification.createdAt)}</p>
 
-                  {verification.status === "in_progress" ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">
-                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
-                      In Progress
-                    </span>
-                  ) : verification.status === "failed" ? (
-                    <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full">
-                      Failed
-                    </span>
-                  ) : verification.benefits?.eligible === true ? (
-                    <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
-                      Active
-                    </span>
-                  ) : verification.benefits?.eligible === false ? (
-                    <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full">
-                      Inactive
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-full">
-                      Complete
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Status badge */}
+                    {displayStatus === "in_progress" ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">
+                        <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                        In Progress
+                      </span>
+                    ) : displayStatus === "completed" ? (
+                      <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                        Completed
+                      </span>
+                    ) : displayStatus === "incomplete" ? (
+                      <span className="inline-flex items-center px-2.5 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">
+                        Incomplete
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full">
+                        Failed
+                      </span>
+                    )}
 
-                  <Link
-                    href={`/dashboard/results/${verification.id}`}
-                    className="text-sky-600 hover:text-sky-700 text-sm font-medium"
-                  >
-                    View Details
-                  </Link>
+                    {/* Eligibility badge */}
+                    {verification.benefits?.eligible === true && (
+                      <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-600 text-xs font-medium rounded-full border border-green-200">
+                        Eligible
+                      </span>
+                    )}
+                    {verification.benefits?.eligible === false && (
+                      <span className="inline-flex items-center px-2 py-0.5 bg-red-50 text-red-600 text-xs font-medium rounded-full border border-red-200">
+                        Ineligible
+                      </span>
+                    )}
+                  </div>
+
+                  {displayStatus === "incomplete" ? (
+                    <Link
+                      href={`/dashboard/results/${verification.id}`}
+                      className="text-amber-600 hover:text-amber-700 text-sm font-medium"
+                    >
+                      Continue
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/dashboard/results/${verification.id}`}
+                      className="text-sky-600 hover:text-sky-700 text-sm font-medium"
+                    >
+                      View Details
+                    </Link>
+                  )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

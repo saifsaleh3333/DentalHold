@@ -362,11 +362,18 @@ export async function POST(request: Request) {
       }
 
       // Determine status based on call outcome and whether we got data
+      const hasAnyBenefitsData = structuredResult.patient_eligible !== undefined
+        || structuredResult.annual_maximum !== undefined
+        || structuredResult.plan_type !== undefined
+        || structuredResult.coverage_basic !== undefined;
+
       let status = "completed";
-      if (call?.endedReason && !["customer-ended-call", "assistant-ended-call", "hangup"].includes(call.endedReason)) {
+      // Only fail if call ended abnormally AND we got NO benefits data
+      if (call?.endedReason && !["customer-ended-call", "assistant-ended-call", "hangup"].includes(call.endedReason) && !hasAnyBenefitsData) {
         status = "failed";
       }
-      if (structuredResult.patient_eligible === undefined && !structuredResult.annual_maximum) {
+      // Also fail if we got absolutely nothing regardless of end reason
+      if (!hasAnyBenefitsData) {
         status = "failed";
       }
 
