@@ -1,3 +1,5 @@
+import { VapiClient, VapiError } from "@vapi-ai/server-sdk";
+
 interface PracticeInfo {
   name: string;
   address: string | null;
@@ -408,13 +410,112 @@ export async function triggerVapiCall(
         url: "https://dentalhold.com/api/vapi-webhook",
         timeoutSeconds: 20,
       },
+
+      // Conservative endpointing for insurance calls — give reps time to finish
       startSpeakingPlan: {
         smartEndpointingPlan: {
           provider: "livekit" as const,
+          waitFunction: "700 + 4000 * max(0, x-0.5)",
         },
+        waitSeconds: 0.6,
+        transcriptionEndpointingPlan: {
+          onPunctuationSeconds: 0.3,
+          onNoPunctuationSeconds: 2.0,
+          onNumberSeconds: 1.5,
+        },
+        customEndpointingRules: [
+          // Hold message patterns — wait 30s before responding
+          {
+            type: "user" as const,
+            regex: "(your call is important|please continue to hold|estimated wait time|press .* for callback|visit our website|thank you for your patience|representative will be with you|currently experiencing|higher than normal call volume)",
+            timeoutSeconds: 30,
+          },
+          // After Dani asks a benefits question — wait longer for batch answers
+          {
+            type: "assistant" as const,
+            regex: "(what('s| is) the (coverage|frequency|deductible|annual maximum|waiting period|fee schedule|claims|payor))",
+            timeoutSeconds: 3.0,
+          },
+        ],
       },
+
+      // IVR protection — require 3+ words before treating as interruption
+      stopSpeakingPlan: {
+        numWords: 3,
+        voiceSeconds: 0.3,
+        backoffSeconds: 1.5,
+      },
+
+      // Fix "oh" vs "zero" at TTS level
+      voiceFormattingPlan: {
+        enabled: true,
+        numberToDigitsCutoff: 100,
+        replacements: [
+          {
+            type: "regex" as const,
+            regex: "\\boh\\b(?=\\s*(?:zero|one|two|three|four|five|six|seven|eight|nine|\\d))",
+            value: "zero",
+          },
+          {
+            type: "regex" as const,
+            regex: "\\b[Oo](?=\\s*\\d)",
+            value: "zero",
+          },
+        ],
+      },
+
+      // Hooks — hold detection + low confidence repeat
+      hooks: [
+        // Hold reinforcement — remind Dani she's on hold every 2 min
+        {
+          on: "customer.speech.timeout",
+          name: "hold-patience",
+          options: {
+            timeoutSeconds: 120,
+            triggerMaxCount: 20,
+            triggerResetMode: "onUserSpeech",
+          },
+          do: [{
+            type: "say",
+            prompt: "You are on hold waiting for a live representative. The audio you hear is recorded hold messages, NOT an IVR menu. Continue waiting silently. Do not respond to recorded messages.",
+          }],
+        },
+        // Low confidence (moderate) — ask rep to repeat
+        {
+          on: "assistant.transcriber.endpointedSpeechLowConfidence",
+          name: "ask-repeat-moderate",
+          options: {
+            confidenceMin: 0.3,
+            confidenceMax: 0.6,
+          },
+          do: [{
+            type: "say",
+            exact: [
+              "I'm sorry, could you repeat that?",
+              "I didn't quite catch that, could you say that again?",
+              "Sorry, I missed that. Could you repeat it please?",
+            ],
+          }],
+        },
+        // Low confidence (severe) — ask rep to speak louder
+        {
+          on: "assistant.transcriber.endpointedSpeechLowConfidence",
+          name: "ask-repeat-severe",
+          options: {
+            confidenceMin: 0.0,
+            confidenceMax: 0.3,
+          },
+          do: [{
+            type: "say",
+            exact: [
+              "I'm really sorry, I'm having trouble hearing you. Could you speak a little louder or repeat that more slowly?",
+            ],
+          }],
+        },
+      ],
+
       analysisPlan: {
-        structuredDataPrompt: "Extract all dental insurance verification data discussed in this phone call. Only include fields that were explicitly stated by the insurance representative. Leave fields null if not discussed or not answered.",
+        structuredDataPrompt: "You are analyzing a dental insurance verification phone call. Extract ONLY information that was EXPLICITLY stated by the insurance representative. If a value was discussed but you're unsure of the exact value, include your best interpretation. Leave fields null ONLY if the topic was never discussed. Special rules: if the rep says there is no ortho benefit, set ortho_maximum to 0. If the rep says implants are not covered, set implants_covered to false.",
         structuredDataSchema: {
           type: "object" as const,
           properties: {
@@ -444,7 +545,7 @@ export async function triggerVapiCall(
               deductible_met: { type: "boolean", description: "Has the deductible been met?" },
               deductible_amount_met: { type: "number", description: "Amount of deductible met in dollars" },
               deductible_applies_to: { type: "string", description: "What the deductible applies to" },
-              ortho_maximum: { type: "number", description: "Orthodontic maximum in dollars" },
+              ortho_maximum: { type: "number", description: "Orthodontic maximum in dollars. Use 0 if rep confirms there is no ortho benefit." },
               ortho_maximum_used: { type: "number", description: "Ortho maximum used in dollars" },
               waiting_period_preventive: { type: "string", description: "Waiting period for preventive" },
               waiting_period_basic: { type: "string", description: "Waiting period for basic" },
@@ -510,21 +611,23 @@ export async function triggerVapiCall(
     },
   };
 
-  const response = await fetch("https://api.vapi.ai/call/phone", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
+  const vapiClient = new VapiClient({
+    token: process.env.VAPI_API_KEY!,
   });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Vapi API error (${response.status}): ${errorBody}`);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const call = await vapiClient.calls.create(payload as any, {
+      maxRetries: 2,
+      timeoutInSeconds: 30,
+    });
+    return call as unknown as VapiCallResponse;
+  } catch (error) {
+    if (error instanceof VapiError) {
+      throw new Error(`Vapi API error (${error.statusCode}): ${JSON.stringify(error.body)}`);
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 // The full Dani system prompt with placeholders for practice/patient/subscriber info.
@@ -705,7 +808,7 @@ SECTION 2 - BENEFIT DETAILS:
 - What's the deductible?
 - How much of the deductible has been met?
 - Does the deductible apply to preventive, basic, or major?
-- Is there an ortho maximum? If so, what is it and how much has been used?
+- Is there an ortho maximum? If so, what is it and how much has been used? If the rep says there is NO ortho benefit or no ortho coverage, record ortho_maximum as 0.
 
 SECTION 3 - WAITING PERIODS:
 - Are there any waiting periods for preventive?

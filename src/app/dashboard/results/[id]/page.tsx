@@ -614,8 +614,8 @@ export default function VerificationResultsDetail() {
             </div>
           </div>
           <div>
-            <Cell label="Ortho Maximum" value={b?.orthoMaximum ? `$${b.orthoMaximum.toLocaleString()}` : undefined} />
-            <Cell label="Ortho Max. Used" value={b?.orthoMaximumUsed != null ? `$${b.orthoMaximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
+            <Cell label="Ortho Maximum" value={b?.orthoMaximum != null ? (b.orthoMaximum === 0 ? "No benefit" : `$${b.orthoMaximum.toLocaleString()}`) : undefined} />
+            <Cell label="Ortho Max. Used" value={b?.orthoMaximum === 0 ? "N/A" : b?.orthoMaximumUsed != null ? `$${b.orthoMaximumUsed.toLocaleString()}` : undefined} className="border-t border-slate-200" />
           </div>
         </div>
 

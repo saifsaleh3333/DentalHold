@@ -53,7 +53,7 @@ async function parseTranscriptWithAI(transcript: string): Promise<VapiStructured
         messages: [
           {
             role: "system",
-            content: `Extract dental insurance verification data from this phone call transcript. Return a JSON object with ONLY fields that were explicitly stated by the insurance representative. Use null for anything not discussed.\n\nFields:\n${fieldList}\n\nReturn valid JSON only.`,
+            content: `Extract dental insurance verification data from this phone call transcript. Return a JSON object with ONLY fields that were explicitly stated by the insurance representative. Use null for anything not discussed.\n\nSpecial rules:\n- If the rep says there is NO ortho benefit or no ortho coverage, set ortho_maximum to 0.\n- If the rep says implants are not covered, set implants_covered to false.\n\nFields:\n${fieldList}\n\nReturn valid JSON only.`,
           },
           {
             role: "user",
