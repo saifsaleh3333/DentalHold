@@ -446,21 +446,8 @@ export async function triggerVapiCall(
         backoffSeconds: 1.5,
       },
 
-      // Hooks — hold detection + low confidence repeat
+      // Hooks — low confidence repeat
       hooks: [
-        // Hold reinforcement — remind Dani she's on hold every 2 min
-        {
-          on: "customer.speech.timeout",
-          options: {
-            timeoutSeconds: 120,
-            triggerMaxCount: 10,
-            triggerResetMode: "onUserSpeech",
-          },
-          do: [{
-            type: "say",
-            prompt: "You are on hold waiting for a live representative. The audio you hear is recorded hold messages, NOT an IVR menu. Continue waiting silently. Do not respond to recorded messages.",
-          }],
-        },
         // Low confidence (moderate) — ask rep to repeat
         {
           on: "assistant.transcriber.endpointedSpeechLowConfidence",
@@ -665,8 +652,9 @@ LISTEN to what the IVR says, then respond with ONE of these actions:
 - Insurance hold times can be 15-45 minutes. This is NORMAL. Do NOT hang up.
 - When you hear hold music or silence, wait patiently
 - If a representative comes back on the line, greet them
-- Stay COMPLETELY SILENT while on hold. Do NOT say "hold", "waiting", "I'm here", or anything else. Just wait silently.
-- The hold system will play the SAME recorded message repeatedly (e.g., "visit our website", "your call is important to us", "press 1 for callback"). This is NORMAL hold behavior, NOT an IVR loop. Hearing the same message 5, 10, or even 20 times is expected. Just keep waiting silently.
+- PRODUCE ABSOLUTELY ZERO AUDIO OUTPUT while on hold. Do NOT speak at all. Do NOT say "hold", "waiting", "I'm here", "continue waiting", or ANY words whatsoever. Generate NO speech. Emit NOTHING.
+- Do NOT narrate what you are doing. Do NOT say "Continue waiting silently" or "Wait silently for a specialist" — those are actions to TAKE, not words to SAY. The correct action is to produce NO output at all.
+- The hold system will play the SAME recorded message repeatedly (e.g., "visit our website", "your call is important to us", "press 1 for callback"). This is NORMAL hold behavior, NOT an IVR loop. Hearing the same message 5, 10, or even 20 times is expected. Produce NO audio output.
 - If the hold system offers a callback (e.g., "press 1 and we'll call you back"), IGNORE it. Do not press anything. Stay on the line.
 
 Be concise and natural. Only provide information when asked. Ask ONE question at a time and wait for answers.
@@ -900,8 +888,8 @@ USE THE endCall TOOL WHEN:
 IMPORTANT: After you say your final goodbye (like "Thank you, have a great day!"), IMMEDIATELY use the endCall tool. Do NOT wait for a response. Do NOT keep talking. Just end the call.
 
 CRITICAL — DO NOT HANG UP IN THESE SITUATIONS:
-- Hold music is playing — this is normal, keep waiting
-- The same recorded hold message repeats (like "visit our website" or "your call is important") — this is NOT an IVR loop, this is normal hold. Keep waiting silently.
+- Hold music is playing — this is normal, keep waiting with ZERO audio output
+- The same recorded hold message repeats (like "visit our website" or "your call is important") — this is NOT an IVR loop, this is normal hold. Produce NO speech. Do NOT narrate your actions.
 - The hold system offers a callback — ignore it, stay on the line
 - You have been on hold for less than 45 minutes — keep waiting
 
