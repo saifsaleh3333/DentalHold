@@ -426,7 +426,7 @@ export async function triggerVapiCall(
         customEndpointingRules: [
           // Hold message patterns — wait 30s before responding
           {
-            type: "user" as const,
+            type: "customer" as const,
             regex: "(your call is important|please continue to hold|estimated wait time|press .* for callback|visit our website|thank you for your patience|representative will be with you|currently experiencing|higher than normal call volume)",
             timeoutSeconds: 30,
           },
@@ -446,24 +446,6 @@ export async function triggerVapiCall(
         backoffSeconds: 1.5,
       },
 
-      // Fix "oh" vs "zero" at TTS level
-      voiceFormattingPlan: {
-        enabled: true,
-        numberToDigitsCutoff: 100,
-        replacements: [
-          {
-            type: "regex" as const,
-            regex: "\\boh\\b(?=\\s*(?:zero|one|two|three|four|five|six|seven|eight|nine|\\d))",
-            value: "zero",
-          },
-          {
-            type: "regex" as const,
-            regex: "\\b[Oo](?=\\s*\\d)",
-            value: "zero",
-          },
-        ],
-      },
-
       // Hooks — hold detection + low confidence repeat
       hooks: [
         // Hold reinforcement — remind Dani she's on hold every 2 min
@@ -472,7 +454,7 @@ export async function triggerVapiCall(
           name: "hold-patience",
           options: {
             timeoutSeconds: 120,
-            triggerMaxCount: 20,
+            triggerMaxCount: 10,
             triggerResetMode: "onUserSpeech",
           },
           do: [{
