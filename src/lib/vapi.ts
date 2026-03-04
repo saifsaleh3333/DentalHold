@@ -428,7 +428,7 @@ export async function triggerVapiCall(
           {
             type: "customer" as const,
             regex: "(your call is important|please continue to hold|estimated wait time|press .* for callback|visit our website|thank you for your patience|representative will be with you|currently experiencing|higher than normal call volume)",
-            timeoutSeconds: 30,
+            timeoutSeconds: 15,
           },
           // After Dani asks a benefits question — wait longer for batch answers
           {
@@ -451,7 +451,6 @@ export async function triggerVapiCall(
         // Hold reinforcement — remind Dani she's on hold every 2 min
         {
           on: "customer.speech.timeout",
-          name: "hold-patience",
           options: {
             timeoutSeconds: 120,
             triggerMaxCount: 10,
@@ -465,7 +464,6 @@ export async function triggerVapiCall(
         // Low confidence (moderate) — ask rep to repeat
         {
           on: "assistant.transcriber.endpointedSpeechLowConfidence",
-          name: "ask-repeat-moderate",
           options: {
             confidenceMin: 0.3,
             confidenceMax: 0.6,
@@ -482,7 +480,6 @@ export async function triggerVapiCall(
         // Low confidence (severe) — ask rep to speak louder
         {
           on: "assistant.transcriber.endpointedSpeechLowConfidence",
-          name: "ask-repeat-severe",
           options: {
             confidenceMin: 0.0,
             confidenceMax: 0.3,
