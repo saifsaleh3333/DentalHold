@@ -101,9 +101,10 @@ export async function POST(request: Request) {
         data: { status: "failed" },
       });
 
-      console.error("Vapi call trigger failed:", vapiError);
+      const errorMsg = vapiError instanceof Error ? vapiError.message : String(vapiError);
+      console.error("Vapi call trigger failed:", errorMsg);
       return NextResponse.json(
-        { error: "Failed to start verification call. Please try again." },
+        { error: `Failed to start verification call: ${errorMsg}` },
         { status: 500 }
       );
     }

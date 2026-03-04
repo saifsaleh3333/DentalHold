@@ -126,9 +126,10 @@ export async function POST(
         data: { status: existing.status },
       });
 
-      console.error("Vapi call trigger failed on continuation:", vapiError);
+      const errorMsg = vapiError instanceof Error ? vapiError.message : String(vapiError);
+      console.error("Vapi call trigger failed on continuation:", errorMsg);
       return NextResponse.json(
-        { error: "Failed to start continuation call. Please try again." },
+        { error: `Failed to start continuation call: ${errorMsg}` },
         { status: 500 }
       );
     }
