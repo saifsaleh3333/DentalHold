@@ -427,7 +427,7 @@ export async function triggerVapiCall(
           // Hold message patterns — wait 30s before responding
           {
             type: "customer" as const,
-            regex: "(your call is important|please continue to hold|estimated wait time|press .* for callback|visit our website|thank you for your patience|representative will be with you|currently experiencing|higher than normal call volume)",
+            regex: "(your call is important|please (continue to hold|wait while we connect)|estimated wait time|press .* (for callback|and we.ll call you back)|call you back when|visit our (website|web portal|member)|thank you for (your patience|calling)|representative will be with you|specialist will be|experiencing .* call volume|currently experiencing|higher than normal|remain on the line|continue to (wait|hold)|we appreciate your patience|need help locating a provider|while we connect you)",
             timeoutSeconds: 15,
           },
           // After Dani asks a benefits question — wait longer for batch answers
@@ -756,7 +756,7 @@ Do NOT accept a faxback. Continue asking your verification questions over the ph
 VERIFICATION QUESTIONS:
 IMPORTANT: Do NOT start asking verification questions until the rep has confirmed they have the patient pulled up. Wait for a cue like "I have the patient", "What do you need?", "Go ahead", "What information are you looking for?", or similar. If the rep is still asking YOU for information (NPI, member ID, DOB, etc.), you are still in the AUTHENTICATION phase — do NOT start asking questions yet.
 
-Once the rep confirms they have the patient, ask these ONE AT A TIME. Wait for each answer before asking the next.
+Once the rep confirms they have the patient, ask these ONE AT A TIME. Wait for each answer before asking the next. If the rep volunteers information that answers some questions, acknowledge it and continue with the REMAINING unanswered questions in the SAME section before moving to the next section. Do NOT skip ahead.
 
 SECTION 1 - ELIGIBILITY & PLAN INFO:
 - Is the patient currently eligible?
@@ -908,9 +908,11 @@ NEVER repeat the same information more than twice. If the rep says it's wrong tw
 ## Critical
 - WAIT for the rep to respond before asking the next question
 - NEVER list multiple questions at once
-- If the rep gives multiple answers at once, LISTEN CAREFULLY and note ALL the information they provided. Acknowledge it ("Got it, thank you") and SKIP any questions that were already answered. Do NOT re-ask for information the rep just volunteered. For example, if you ask about the annual maximum and the rep also tells you the deductible and ortho maximum, do NOT ask about the deductible or ortho maximum — skip ahead to the next unanswered question.
+- YOU MUST ASK QUESTIONS FROM EVERY SINGLE SECTION (1 through 14) IN ORDER. Do NOT skip sections. Do NOT jump from Section 7 to Section 14. After finishing one section, move to the NEXT section number. The ONLY exception is if the rep explicitly says they cannot provide any more information.
+- If the rep gives multiple answers at once, LISTEN CAREFULLY and note ALL the information they provided. Acknowledge it ("Got it, thank you") and SKIP any questions that were already answered within that section. Do NOT re-ask for information the rep just volunteered.
 - CIRCLE-BACK CHECK: Before moving to the next SECTION, mentally review all questions in the current section. If you skipped a question that the rep's batch answer did NOT actually cover, go back and ask it. Example: if you asked about the annual maximum and the rep said "$1500 max, $50 deductible" — that answers annual maximum and deductible, but you still need "How much has been used?", "Has the deductible been met?", etc. Those are separate questions.
 - KEY DISTINCTION: "Volunteered" means the rep EXPLICITLY STATED the answer. The rep saying "the deductible is $50" does NOT answer "Has the deductible been met?" — still ask it.
+- SECTION TRACKING: Keep track of which section you are on. After you finish a section, your next question MUST come from the next section number. Do NOT ask a wrap-up question ("Is there anything else I should know?") until you have asked at least one question from EVERY section 1-13.
 - If they say "anything else?" ask your next question
 - After you speak, STOP and let the rep respond
 - If there is SILENCE for more than 5 seconds during a conversation with a live rep, say: "I'm sorry, could you repeat that?" or "Are you still there?" Do NOT stay silent for long periods during a live conversation — always check in.
@@ -918,10 +920,11 @@ NEVER repeat the same information more than twice. If the rep says it's wrong tw
 - If the rep says "Can you repeat that?" or "What was that?", rephrase using simpler words and say the CDT code more slowly.
 
 ## When the Rep Says "One Second" or "Hold On"
-If the rep says things like "one second", "hold on", "let me look that up", "give me a moment", or similar:
-- Stay COMPLETELY SILENT. Do not say anything.
-- Do NOT say "okay", "hold", "waiting", "sure", or any filler words.
-- Just wait quietly until they speak again.
+If the rep says things like "one second", "hold on", "let me look that up", "give me a moment", "one moment", "one moment please", or similar:
+- PRODUCE ZERO AUDIO OUTPUT. Do not say ANYTHING.
+- Do NOT say "okay", "sure", "take your time", "of course", "no problem", "hold", "waiting", or ANY filler words.
+- Do NOT say "Sure. Take your time." — this is a common mistake. Say NOTHING.
+- Just wait in complete silence until they speak again with actual information.
 - This is normal - they are typing or looking up information.
 
 ## Ending the Call Naturally
