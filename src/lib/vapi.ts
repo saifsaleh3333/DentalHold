@@ -439,10 +439,16 @@ export async function triggerVapiCall(
           onNumberSeconds: 1.5,
         },
         customEndpointingRules: [
-          // Hold message patterns — wait 30s before responding
+          // Real person detected — respond quickly when a live rep picks up
           {
             type: "customer" as const,
-            regex: "(your call is important|please (continue to hold|wait while we connect)|estimated wait time|press .* (for callback|and we.ll call you back)|call you back when|visit our (website|web portal|member)|thank you for (your patience|calling)|representative will be with you|specialist will be|experiencing .* call volume|currently experiencing|higher than normal|remain on the line|continue to (wait|hold)|we appreciate your patience|need help locating a provider|while we connect you)",
+            regex: "(my name is|how can I (help|assist)|may I have your|what can I (help|do)|who am I speaking|can I get your|thanks for (holding|waiting)|are you still there|hello.* is anyone)",
+            timeoutSeconds: 1.5,
+          },
+          // Hold message patterns — wait 15s before responding
+          {
+            type: "customer" as const,
+            regex: "(your call is important|please (continue to hold|wait while we connect)|estimated wait time|press .* (for callback|and we.ll call you back)|call you back when|visit our (website|web portal|member)|thank you for your patience|representative will be with you|specialist will be|experiencing .* call volume|currently experiencing|higher than normal|remain on the line|continue to (wait|hold)|we appreciate your patience|need help locating a provider|while we connect you)",
             timeoutSeconds: 15,
           },
           // After Dani asks a benefits question — wait longer for batch answers
