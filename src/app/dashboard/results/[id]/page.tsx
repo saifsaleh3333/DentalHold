@@ -75,7 +75,7 @@ interface Benefits {
   preventive?: {
     d1110?: CodeDetail;
     d4346?: CodeDetail;
-    fluoride?: { covered?: boolean; ageLimit?: string };
+    fluoride?: { covered?: boolean; ageLimit?: string; frequency?: string };
   };
 
   // Extractions codes
@@ -152,7 +152,7 @@ interface Benefits {
     d7140Coverage?: number;
     d4910Coverage?: number;
   };
-  fluoride?: { covered?: boolean; ageLimit?: string };
+  fluoride?: { covered?: boolean; ageLimit?: string; frequency?: string };
   crowns?: { covered?: boolean; coverage?: number };
 }
 
@@ -683,6 +683,12 @@ export default function VerificationResultsDetail() {
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Age Limit</span>
                   <span className="font-medium">{prev.fluoride.ageLimit}</span>
+                </div>
+              )}
+              {prev.fluoride.frequency && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Frequency</span>
+                  <span className="font-medium">{prev.fluoride.frequency}</span>
                 </div>
               )}
             </div>

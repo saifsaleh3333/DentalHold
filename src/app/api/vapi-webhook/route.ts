@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const REMAINING_QUESTIONS_CHECKLIST = `REMAINING QUESTIONS CHECKLIST — Review each item. If you have NOT asked about it, go back and ask now.
+
+SECTION 1 - ELIGIBILITY: eligible?, effective date, in/out network, PPO/HMO/DMO, fee schedule, plan/group name, group number, claims address, payor ID
+SECTION 2 - BENEFITS: annual max, used/remaining, max applies to, deductible, ded. met, ded. applies to, ortho max/used
+SECTION 3 - WAITING PERIODS: preventive, basic, major
+SECTION 4 - CLAUSES: missing tooth clause
+SECTION 5 - COVERAGE %: diagnostic, preventive, basic, major, endodontics, periodontics, extractions
+SECTION 6 - DIAGNOSTIC: bwx freq/history, pano freq/history, fmx freq/history, D0150 freq/history, D0120 freq/history, D0140 freq, exams share frequency
+SECTION 7 - PREVENTIVE: D1110 freq/history, D4346 coverage/freq/shares, fluoride covered/age limit/frequency
+SECTION 8 - BASIC: filling downgrades
+SECTION 9 - MAJOR: crown downgrades, crown replacement freq
+SECTION 10 - EXTRACTIONS: D7210 coverage, D7140 coverage
+SECTION 11 - PERIODONTICS: D4910 coverage/freq, D4341 freq/history, D4342 freq/history
+SECTION 12 - IMPLANTS: covered?, D6010/D6057/D6058 coverage
+SECTION 13 - OCCLUSAL GUARD: covered?, coverage %
+SECTION 14 - WRAP UP: limitations/exclusions, reference number, rep name
+
+Do NOT end the call until every section above has been addressed.`;
+
 const STRUCTURED_DATA_SCHEMA = {
   insurance_company: "string", rep_name: "string", call_reference: "string",
   subscriber_id: "string", patient_name: "string", patient_dob: "string",
@@ -23,7 +42,8 @@ const STRUCTURED_DATA_SCHEMA = {
   history_d0140: "string", exams_share_frequency: "boolean", frequency_d1110: "string",
   history_d1110: "string", coverage_d4346: "number", frequency_d4346: "string",
   d4346_shares_with_d1110: "boolean", fluoride_covered: "boolean",
-  fluoride_age_limit: "string", downgrade_fillings: "boolean", downgrade_crowns: "boolean",
+  fluoride_age_limit: "string", fluoride_frequency: "string",
+  downgrade_fillings: "boolean", downgrade_crowns: "boolean",
   frequency_crowns: "string", coverage_d7210: "number", coverage_d7140: "number",
   coverage_d4910: "number", frequency_d4910: "string", frequency_d4341: "string",
   history_d4341: "string", frequency_d4342: "string", history_d4342: "string",
@@ -53,7 +73,7 @@ async function parseTranscriptWithAI(transcript: string): Promise<VapiStructured
         messages: [
           {
             role: "system",
-            content: `Extract dental insurance verification data from this phone call transcript. Return a JSON object with ONLY fields that were explicitly stated by the insurance representative. Use null for anything not discussed.\n\nSpecial rules:\n- If the rep says there is NO ortho benefit or no ortho coverage, set ortho_maximum to 0.\n- If the rep says implants are not covered, set implants_covered to false.\n\nFields:\n${fieldList}\n\nReturn valid JSON only.`,
+            content: `Extract dental insurance verification data from this phone call transcript. Return a JSON object with ONLY fields that were explicitly stated by the insurance representative. Do not infer or guess values. Only extract information that was clearly and explicitly stated. If unsure, use null. Use null for anything not discussed.\n\nSpecial rules:\n- If the rep says there is NO ortho benefit or no ortho coverage, set ortho_maximum to 0.\n- If the rep says implants are not covered, set implants_covered to false.\n\nFields:\n${fieldList}\n\nReturn valid JSON only.`,
           },
           {
             role: "user",
@@ -161,6 +181,7 @@ interface VapiStructuredResult {
   d4346_shares_with_d1110?: boolean;
   fluoride_covered?: boolean;
   fluoride_age_limit?: string;
+  fluoride_frequency?: string;
 
   // Basic
   downgrade_fillings?: boolean;
@@ -224,6 +245,11 @@ interface VapiToolOutput {
 interface VapiWebhookPayload {
   message: {
     type: string;
+    toolCallList?: Array<{
+      id: string;
+      name: string;
+      arguments?: Record<string, unknown>;
+    }>;
     call?: {
       id: string;
       status: string;
@@ -469,6 +495,7 @@ export async function POST(request: Request) {
           fluoride: {
             covered: structuredResult.fluoride_covered,
             ageLimit: structuredResult.fluoride_age_limit,
+            frequency: structuredResult.fluoride_frequency,
           },
         },
 
@@ -620,6 +647,18 @@ export async function POST(request: Request) {
         success: true,
         verificationId: verification.id,
       });
+    }
+
+    // Handle tool-calls from Vapi (e.g. getRemainingQuestions)
+    if (messageType === "tool-calls") {
+      const toolCallList = payload.message?.toolCallList || [];
+      const results = toolCallList.map((toolCall) => ({
+        toolCallId: toolCall.id,
+        result: toolCall.name === "getRemainingQuestions"
+          ? REMAINING_QUESTIONS_CHECKLIST
+          : "Unknown tool",
+      }));
+      return NextResponse.json({ results });
     }
 
     // For other message types (status-update, transcript, etc.), just acknowledge

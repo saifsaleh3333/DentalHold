@@ -242,6 +242,7 @@ const BENEFITS_SECTIONS: Record<string, { label: string; fields: Record<string, 
       "preventive.d4346.sharesWithD1110": "D4346 Shares with Prophy",
       "preventive.fluoride.covered": "Fluoride Covered",
       "preventive.fluoride.ageLimit": "Fluoride Age Limit",
+      "preventive.fluoride.frequency": "Fluoride Frequency",
     },
   },
   basic: {
@@ -381,6 +382,20 @@ export async function triggerVapiCall(
         tools: [
           { type: "endCall" as const },
           { type: "dtmf" as const },
+          {
+            type: "function" as const,
+            function: {
+              name: "getRemainingQuestions",
+              description: "Returns a checklist of all required verification questions. You MUST call this before ending the call to verify you haven't missed any sections.",
+              parameters: {
+                type: "object" as const,
+                properties: {},
+              },
+            },
+            server: {
+              url: "https://dentalhold.com/api/vapi-webhook",
+            },
+          },
         ],
       },
       voice: {
@@ -436,6 +451,12 @@ export async function triggerVapiCall(
             regex: "(what('s| is) the (coverage|frequency|deductible|annual maximum|waiting period|fee schedule|claims|payor))",
             timeoutSeconds: 3.0,
           },
+          // Micro-hold — rep says "one moment" etc., wait 15s before Dani gets a turn
+          {
+            type: "customer" as const,
+            regex: "(one (moment|second|sec)|hold on|give me (a |one )?(moment|second|sec|minute)|let me (look|check|pull|find|see|verify)|bear with me|just a (moment|second|sec)|hang on|looking (that|this) up)",
+            timeoutSeconds: 15,
+          },
         ],
       },
 
@@ -481,7 +502,7 @@ export async function triggerVapiCall(
       ],
 
       analysisPlan: {
-        structuredDataPrompt: "You are analyzing a dental insurance verification phone call. Extract ONLY information that was EXPLICITLY stated by the insurance representative. If a value was discussed but you're unsure of the exact value, include your best interpretation. Leave fields null ONLY if the topic was never discussed. Special rules: if the rep says there is no ortho benefit, set ortho_maximum to 0. If the rep says implants are not covered, set implants_covered to false.",
+        structuredDataPrompt: "You are analyzing a dental insurance verification phone call. Extract ONLY information that was EXPLICITLY stated by the insurance representative. Do not infer or guess values. Only extract information that was clearly and explicitly stated. If unsure, leave null. Leave fields null ONLY if the topic was never discussed. Special rules: if the rep says there is no ortho benefit, set ortho_maximum to 0. If the rep says implants are not covered, set implants_covered to false.",
         structuredDataSchema: {
           type: "object" as const,
           properties: {
@@ -544,6 +565,7 @@ export async function triggerVapiCall(
               d4346_shares_with_d1110: { type: "boolean", description: "Does D4346 share frequency with prophy?" },
               fluoride_covered: { type: "boolean", description: "Is fluoride (D1208) covered?" },
               fluoride_age_limit: { type: "string", description: "Fluoride age limit" },
+              fluoride_frequency: { type: "string", description: "Fluoride (D1208) frequency" },
               downgrade_fillings: { type: "boolean", description: "Does the plan downgrade fillings to amalgam?" },
               downgrade_crowns: { type: "boolean", description: "Does the plan downgrade crowns?" },
               frequency_crowns: { type: "string", description: "Crown replacement frequency" },
@@ -813,7 +835,7 @@ SECTION 7 - PREVENTIVE:
 - When was the last prophy?
 - What's the coverage and frequency for D forty-three forty-six?
 - Does D forty-three forty-six share frequency with prophy?
-- Is fluoride covered? D twelve oh eight. Any age limit?
+- Is fluoride covered? D twelve oh eight. Any age limit? What's the frequency?
 
 SECTION 8 - BASIC:
 - Does the plan downgrade resin fillings to amalgam?
@@ -872,6 +894,21 @@ ALWAYS say CDT codes as individual digits, not as one big number. Examples:
 - D9944 = "D ninety-nine forty-four"
 NEVER say a code as one big number (do NOT say "D one hundred fifty" for D0150).
 
+## PRE-FLIGHT CHECK: Call getRemainingQuestions Before Ending
+You have a tool called "getRemainingQuestions". You MUST call it before wrapping up.
+
+WHEN TO CALL IT:
+- After you've asked your last planned question and received the answer
+- Before you ask for a reference number or say goodbye
+
+WHAT TO DO WITH THE RESULT:
+- The tool returns a checklist of ALL required fields across 14 sections
+- Compare it against what you have already asked about in this conversation
+- If ANY section has items you haven't asked about, go back and ask now
+- Only proceed to wrap-up after confirming you've covered everything
+
+CRITICAL: Do NOT skip this step. Do NOT end the call without calling getRemainingQuestions first.
+
 ## When to Hang Up (USE THE endCall TOOL)
 You have access to an "endCall" tool. You MUST use it to hang up the phone. Saying "goodbye" is NOT enough - you must call the endCall tool to actually disconnect.
 
@@ -881,7 +918,7 @@ USE THE endCall TOOL WHEN:
 - You have been on hold for more than 45 minutes with NO human ever picking up
 - The rep says "call back later", "our system is down", or "we can't help you right now"
 - You reach a voicemail box - hang up immediately, do NOT leave a message
-- You have completed all verification questions and gotten a reference number
+- You have completed all verification questions, called getRemainingQuestions to confirm, and gotten a reference number
 - The rep says goodbye or thanks you for calling
 - You cannot proceed because you're missing required information
 
@@ -908,11 +945,9 @@ NEVER repeat the same information more than twice. If the rep says it's wrong tw
 ## Critical
 - WAIT for the rep to respond before asking the next question
 - NEVER list multiple questions at once
-- YOU MUST ASK QUESTIONS FROM EVERY SINGLE SECTION (1 through 14) IN ORDER. Do NOT skip sections. Do NOT jump from Section 7 to Section 14. After finishing one section, move to the NEXT section number. The ONLY exception is if the rep explicitly says they cannot provide any more information.
 - If the rep gives multiple answers at once, LISTEN CAREFULLY and note ALL the information they provided. Acknowledge it ("Got it, thank you") and SKIP any questions that were already answered within that section. Do NOT re-ask for information the rep just volunteered.
 - CIRCLE-BACK CHECK: Before moving to the next SECTION, mentally review all questions in the current section. If you skipped a question that the rep's batch answer did NOT actually cover, go back and ask it. Example: if you asked about the annual maximum and the rep said "$1500 max, $50 deductible" — that answers annual maximum and deductible, but you still need "How much has been used?", "Has the deductible been met?", etc. Those are separate questions.
 - KEY DISTINCTION: "Volunteered" means the rep EXPLICITLY STATED the answer. The rep saying "the deductible is $50" does NOT answer "Has the deductible been met?" — still ask it.
-- SECTION TRACKING: Keep track of which section you are on. After you finish a section, your next question MUST come from the next section number. Do NOT ask a wrap-up question ("Is there anything else I should know?") until you have asked at least one question from EVERY section 1-13.
 - If they say "anything else?" ask your next question
 - After you speak, STOP and let the rep respond
 - If there is SILENCE for more than 5 seconds during a conversation with a live rep, say: "I'm sorry, could you repeat that?" or "Are you still there?" Do NOT stay silent for long periods during a live conversation — always check in.
