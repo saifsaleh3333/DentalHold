@@ -440,9 +440,10 @@ export async function triggerVapiCall(
         },
         customEndpointingRules: [
           // Real person detected — respond quickly when a live rep picks up
+          // Uses [Xx] character classes since Vapi regex may be case-sensitive
           {
             type: "customer" as const,
-            regex: "(my name is|how can I (help|assist)|may I have your|what can I (help|do)|who am I speaking|can I get your|thanks for (holding|waiting)|are you still there|hello.* is anyone)",
+            regex: "([Tt]his is \\w+ (from|with)|[Mm]y name is|[Hh]ow (can|may) [Ii] (help|assist)|[Mm]ay [Ii] have your|[Ww]hat (can [Ii]|do you need)|[Ww]ho am [Ii] speaking|[Cc]an [Ii] get your|[Tt]hank(s| you) for (holding|waiting)|[Aa]re you still there|[Ii]s anyone (there|on the line)|[Aa]nyone on the line|[Hh]ello\\?|[Pp]rovider [Ss]ervices[.,]? [Hh]ow)",
             timeoutSeconds: 1.5,
           },
           // Hold message patterns — wait 15s before responding
