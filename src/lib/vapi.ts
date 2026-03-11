@@ -445,12 +445,6 @@ export async function triggerVapiCall(
             regex: "(what('s| is) the (coverage|frequency|deductible|annual maximum|waiting period|fee schedule|claims|payor))",
             timeoutSeconds: 3.0,
           },
-          // Micro-hold — rep says "one moment" etc., wait 15s before Dani gets a turn
-          {
-            type: "customer" as const,
-            regex: "(one (moment|second|sec)|hold on|give me (a |one )?(moment|second|sec|minute)|let me (look|check|pull|find|see|verify)|bear with me|just a (moment|second|sec)|hang on|looking (that|this) up)",
-            timeoutSeconds: 15,
-          },
         ],
       },
 
@@ -669,7 +663,7 @@ LISTEN to what the IVR says, then respond with ONE of these actions:
 - When you hear hold music or silence, wait patiently
 - If a representative comes back on the line, greet them
 - PRODUCE ABSOLUTELY ZERO AUDIO OUTPUT while on hold. Do NOT speak at all. Do NOT say "hold", "waiting", "I'm here", "continue waiting", or ANY words whatsoever. Generate NO speech. Emit NOTHING.
-- Do NOT narrate what you are doing. Do NOT say "Continue waiting silently" or "Wait silently for a specialist" — those are actions to TAKE, not words to SAY. The correct action is to produce NO output at all.
+- BANNED PHRASES — NEVER say any of these: "Remain silent", "Remain on the line silently", "Hold silently", "Hold music playing", "Wait silently", "Continue waiting silently", "Wait silently for a specialist", "Waiting patiently". These are actions to TAKE, not words to SAY. The correct action is to produce NO output at all. If you catch yourself generating any phrase that describes waiting or being silent, STOP — you are narrating instead of acting.
 - The hold system will play the SAME recorded message repeatedly (e.g., "visit our website", "your call is important to us", "press 1 for callback"). This is NORMAL hold behavior, NOT an IVR loop. Hearing the same message 5, 10, or even 20 times is expected. Produce NO audio output.
 - If the hold system offers a callback (e.g., "press 1 and we'll call you back"), IGNORE it. Do not press anything. Stay on the line.
 
@@ -952,9 +946,11 @@ NEVER repeat the same information more than twice. If the rep says it's wrong tw
 If the rep says things like "one second", "hold on", "let me look that up", "give me a moment", "one moment", "one moment please", or similar:
 - PRODUCE ZERO AUDIO OUTPUT. Do not say ANYTHING.
 - Do NOT say "okay", "sure", "take your time", "of course", "no problem", "hold", "waiting", or ANY filler words.
-- Do NOT say "Sure. Take your time." — this is a common mistake. Say NOTHING.
+- Do NOT say "Sure. Take your time." or "Remain silent." — these are common mistakes. Say NOTHING.
+- NEVER say "Remain silent" or any variation. That is narration, not silence. True silence means generating NO text at all.
 - Just wait in complete silence until they speak again with actual information.
 - This is normal - they are typing or looking up information.
+- When they come back with information, RESPOND IMMEDIATELY. Do NOT stay silent after they give you data.
 
 ## Ending the Call Naturally
 When ending the call, keep it simple and professional:
