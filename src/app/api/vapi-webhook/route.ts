@@ -20,6 +20,90 @@ SECTION 14 - WRAP UP: limitations/exclusions, reference number, rep name
 
 Do NOT end the call until every section above has been addressed.`;
 
+const REQUIRED_FIELDS_FOR_GAP_ANALYSIS = `Required dental verification fields (check each against the transcript):
+
+ELIGIBILITY: patient eligible, effective date, in/out network, PPO/HMO/DMO plan type, fee schedule, plan or group name, group number, claims mailing address, payor ID
+BENEFITS: annual maximum, amount used, amount remaining, what maximum applies to, deductible amount, deductible met (yes/no), what deductible applies to, ortho maximum, ortho maximum used
+WAITING PERIODS: preventive waiting period, basic waiting period, major waiting period
+CLAUSES: missing tooth clause
+COVERAGE %: diagnostic %, preventive %, basic %, major %, endodontics %, periodontics %, extractions %
+DIAGNOSTIC: bitewing frequency, bitewing last done, pano frequency, pano last done, FMX frequency, FMX last done, D0150 comp exam frequency, D0150 last done, D0120 periodic exam frequency, D0120 last done, D0140 limited exam frequency, do exams share frequency
+PREVENTIVE: D1110 prophy frequency, D1110 last done, D4346 coverage %, D4346 frequency, D4346 shares with prophy?, fluoride covered?, fluoride age limit, fluoride frequency
+BASIC: filling downgrades to amalgam?
+MAJOR: crown downgrades?, crown replacement frequency
+EXTRACTIONS: D7210 surgical extraction coverage %, D7140 simple extraction coverage %
+PERIODONTICS: D4910 perio maintenance coverage %, D4910 frequency, D4341 SRP frequency, D4341 last done, D4342 frequency, D4342 last done
+IMPLANTS: implants covered?, D6010 coverage %, D6057 coverage %, D6058 coverage %
+OCCLUSAL GUARD: covered?, coverage %
+WRAP UP: limitations/exclusions, call reference number, rep name`;
+
+async function analyzeTranscriptForGaps(transcript: string): Promise<string> {
+  if (!process.env.OPENAI_API_KEY || !transcript) {
+    return REMAINING_QUESTIONS_CHECKLIST;
+  }
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: `You analyze dental insurance verification call transcripts to identify MISSING information.
+
+Given a transcript and a list of required fields, identify which fields were NOT discussed or answered by the insurance rep.
+
+Rules:
+- Only mark a field as "covered" if the rep EXPLICITLY provided an answer for it.
+- If the rep said "none" or "no" for something (e.g., "no waiting periods"), that counts as covered.
+- If the rep said something is "not covered" (e.g., "implants are not covered"), that counts as covered — you know the answer.
+- If a field was never mentioned or asked about at all, it is MISSING.
+- If the assistant asked but the rep didn't answer or got cut off, it is MISSING.
+- Be precise — "coverage for basic is 80%" covers basic coverage %, but does NOT cover endodontics % unless endo was explicitly mentioned.
+
+Output format — return ONLY the missing items as a numbered list of specific questions to ask. Group by topic. If nothing is missing, say "ALL FIELDS COVERED — proceed to wrap up."
+
+Example output:
+STOP — you MISSED these questions. Go back and ask the rep NOW:
+1. What is the coverage percentage for endodontics?
+2. What is the frequency for D4346? Does it share frequency with prophy?
+3. What is the frequency for fluoride?
+4. What is the coverage for simple extraction D7140?
+5. What is the frequency for D4341 SRP? When was it last done?
+6. What is the frequency for D4342? When was it last done?
+7. What is the frequency for D4910 perio maintenance?`,
+          },
+          {
+            role: "user",
+            content: `REQUIRED FIELDS:\n${REQUIRED_FIELDS_FOR_GAP_ANALYSIS}\n\nTRANSCRIPT:\n${transcript}`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("OpenAI gap analysis error:", response.status);
+      return REMAINING_QUESTIONS_CHECKLIST;
+    }
+
+    const data = await response.json();
+    const result = data.choices?.[0]?.message?.content;
+    if (!result) return REMAINING_QUESTIONS_CHECKLIST;
+
+    console.log("Gap analysis result:", result);
+    return result;
+  } catch (error) {
+    console.error("Gap analysis failed:", error);
+    return REMAINING_QUESTIONS_CHECKLIST;
+  }
+}
+
 const STRUCTURED_DATA_SCHEMA = {
   insurance_company: "string", rep_name: "string", call_reference: "string",
   subscriber_id: "string", patient_name: "string", patient_dob: "string",
@@ -652,12 +736,52 @@ export async function POST(request: Request) {
     // Handle tool-calls from Vapi (e.g. getRemainingQuestions)
     if (messageType === "tool-calls") {
       const toolCallList = payload.message?.toolCallList || [];
-      const results = toolCallList.map((toolCall) => ({
-        toolCallId: toolCall.id,
-        result: toolCall.name === "getRemainingQuestions"
-          ? REMAINING_QUESTIONS_CHECKLIST
-          : "Unknown tool",
-      }));
+
+      // Extract transcript from the payload for gap analysis
+      // Vapi sends artifact.messages and/or call.transcript in tool-call webhooks
+      let currentTranscript = payload.message.artifact?.transcript
+        || payload.message.call?.transcript
+        || "";
+
+      // If no transcript in payload, try building from artifact messages
+      if (!currentTranscript && payload.message.artifact?.messages) {
+        currentTranscript = payload.message.artifact.messages
+          .map(m => `${m.role}: ${m.message}`)
+          .join("\n");
+      }
+
+      // If still no transcript, try fetching from Vapi API using call ID
+      if (!currentTranscript && payload.message.call?.id && process.env.VAPI_API_KEY) {
+        try {
+          const vapiRes = await fetch(`https://api.vapi.ai/call/${payload.message.call.id}`, {
+            headers: { Authorization: `Bearer ${process.env.VAPI_API_KEY}` },
+          });
+          if (vapiRes.ok) {
+            const callData = await vapiRes.json();
+            currentTranscript = callData.artifact?.transcript
+              || callData.transcript
+              || "";
+          }
+        } catch (e) {
+          console.error("Failed to fetch transcript from Vapi:", e);
+        }
+      }
+
+      const results = await Promise.all(
+        toolCallList.map(async (toolCall) => {
+          if (toolCall.name === "getRemainingQuestions") {
+            // If we have a transcript, do intelligent gap analysis
+            if (currentTranscript && currentTranscript.length > 100) {
+              const gapResult = await analyzeTranscriptForGaps(currentTranscript);
+              return { toolCallId: toolCall.id, result: gapResult };
+            }
+            // Fallback to static checklist
+            return { toolCallId: toolCall.id, result: REMAINING_QUESTIONS_CHECKLIST };
+          }
+          return { toolCallId: toolCall.id, result: "Unknown tool" };
+        })
+      );
+
       return NextResponse.json({ results });
     }
 
