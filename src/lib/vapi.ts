@@ -423,7 +423,7 @@ export async function triggerVapiCall(
       },
       server: {
         url: "https://dentalhold.com/api/vapi-webhook",
-        timeoutSeconds: 20,
+        timeoutSeconds: 30,
       },
 
       // Conservative endpointing for insurance calls — give reps time to finish

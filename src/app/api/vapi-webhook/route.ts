@@ -40,7 +40,7 @@ async function analyzeTranscriptForGaps(transcript: string): Promise<string> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         temperature: 0,
         messages: [
           {
