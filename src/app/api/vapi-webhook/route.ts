@@ -27,6 +27,68 @@ IMPLANTS: implants covered?, D6010 coverage %, D6057 coverage %, D6058 coverage 
 OCCLUSAL GUARD: covered?, coverage %
 WRAP UP: limitations/exclusions, call reference number, rep name`;
 
+// CDT code pronunciation map for generating questions
+const CDT_PRONUNCIATIONS: Record<string, string> = {
+  D0150: "D zero one fifty", D0120: "D zero one twenty", D0140: "D zero one forty",
+  D0210: "D zero two ten", D0220: "D zero two twenty", D0274: "D zero two seventy-four",
+  D0330: "D zero three thirty", D1110: "D eleven ten", D1208: "D twelve oh eight",
+  D4346: "D forty-three forty-six", D4341: "D forty-three forty-one",
+  D4342: "D forty-three forty-two", D4910: "D forty-nine ten",
+  D6010: "D sixty ten", D6057: "D sixty fifty-seven", D6058: "D sixty fifty-eight",
+  D7140: "D seventy-one forty", D7210: "D seventy-two ten", D9944: "D ninety-nine forty-four",
+};
+
+// Map of field keys to the question Dani should ask
+const FIELD_QUESTIONS: Record<string, string> = {
+  payor_id: "What is the payor ID?",
+  coverage_preventive: "What's the coverage percentage for preventive services?",
+  coverage_major: "What's the coverage percentage for major services?",
+  coverage_extractions: "What's the coverage percentage for extractions?",
+  coverage_endodontics: "What's the coverage percentage for endodontics?",
+  coverage_periodontics: "What's the coverage percentage for periodontics?",
+  deductible_applies_to: "What does the deductible apply to — preventive, basic, or major?",
+  frequency_bwx: `What's the frequency for bitewing X-rays? ${CDT_PRONUNCIATIONS.D0220} and ${CDT_PRONUNCIATIONS.D0274}.`,
+  history_bwx: "When were bitewings last done?",
+  frequency_pano: `What's the frequency for panoramic X-ray? ${CDT_PRONUNCIATIONS.D0330}.`,
+  history_pano: "When was the pano last done?",
+  frequency_fmx: `What's the frequency for full mouth X-rays? ${CDT_PRONUNCIATIONS.D0210}.`,
+  history_fmx: "When was the FMX last done?",
+  frequency_d0150: `What's the frequency for comprehensive exam? ${CDT_PRONUNCIATIONS.D0150}.`,
+  history_d0150: "When was the comprehensive exam last done?",
+  frequency_d0120: `What's the frequency for periodic exam? ${CDT_PRONUNCIATIONS.D0120}.`,
+  history_d0120: "When was the periodic exam last done?",
+  frequency_d0140: `What's the frequency for limited exam? ${CDT_PRONUNCIATIONS.D0140}.`,
+  exams_share_frequency: "Do the comprehensive, periodic, and limited exams share frequency with each other?",
+  frequency_d1110: `What's the frequency for adult prophy? ${CDT_PRONUNCIATIONS.D1110}.`,
+  history_d1110: "When was the last prophy done?",
+  coverage_d4346: `What's the coverage percentage for ${CDT_PRONUNCIATIONS.D4346}?`,
+  frequency_d4346: `What's the frequency for ${CDT_PRONUNCIATIONS.D4346}?`,
+  d4346_shares_with_d1110: `Does ${CDT_PRONUNCIATIONS.D4346} share frequency with prophy?`,
+  fluoride_covered: `Is fluoride covered? ${CDT_PRONUNCIATIONS.D1208}.`,
+  fluoride_age_limit: "Is there an age limit for fluoride?",
+  fluoride_frequency: "What's the frequency for fluoride?",
+  downgrade_fillings: "Does the plan downgrade resin fillings to amalgam?",
+  downgrade_crowns: "Does the plan downgrade crowns?",
+  frequency_crowns: "What's the frequency for crown replacement?",
+  coverage_d7210: `What's the coverage for surgical extraction? ${CDT_PRONUNCIATIONS.D7210}.`,
+  coverage_d7140: `What's the coverage for simple extraction? ${CDT_PRONUNCIATIONS.D7140}.`,
+  coverage_d4910: `What's the coverage for perio maintenance? ${CDT_PRONUNCIATIONS.D4910}.`,
+  frequency_d4910: `What's the frequency for ${CDT_PRONUNCIATIONS.D4910}?`,
+  frequency_d4341: `What's the frequency for scaling and root planing? ${CDT_PRONUNCIATIONS.D4341}.`,
+  history_d4341: `When was ${CDT_PRONUNCIATIONS.D4341} last done?`,
+  frequency_d4342: `What's the frequency for ${CDT_PRONUNCIATIONS.D4342}?`,
+  history_d4342: `When was ${CDT_PRONUNCIATIONS.D4342} last done?`,
+  implants_covered: "Are implants covered?",
+  coverage_d6010: `What's the coverage for implant placement? ${CDT_PRONUNCIATIONS.D6010}.`,
+  coverage_d6057: `What's the coverage for the abutment? ${CDT_PRONUNCIATIONS.D6057}.`,
+  coverage_d6058: `What's the coverage for implant crown? ${CDT_PRONUNCIATIONS.D6058}.`,
+  occlusal_guard_covered: `Is occlusal guard covered? ${CDT_PRONUNCIATIONS.D9944}.`,
+  occlusal_guard_coverage: "What's the coverage percentage for occlusal guard?",
+  limitations: "Are there any limitations or exclusions I should be aware of?",
+  reference_number: "Could I get a reference number for this call?",
+  rep_name: "And your name?",
+};
+
 async function analyzeTranscriptForGaps(transcript: string): Promise<string> {
   if (!process.env.OPENAI_API_KEY || !transcript) {
     return FALLBACK_QUESTIONS;
@@ -42,90 +104,86 @@ async function analyzeTranscriptForGaps(transcript: string): Promise<string> {
       body: JSON.stringify({
         model: "gpt-4o",
         temperature: 0,
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content: `You analyze dental insurance verification call transcripts to determine what questions still need to be asked.
-
-Given a transcript of an in-progress call and a list of required fields, determine which fields have been answered and which are still MISSING. Then return the NEXT 4-5 specific questions to ask.
+            content: `You analyze dental insurance verification call transcripts. Given a transcript and required fields, output a JSON object classifying EACH field as "covered" or "missing".
 
 ## Rules
-- A field is "covered" ONLY if the insurance rep EXPLICITLY provided a clear answer — including "no", "not covered", "N/A", "as needed", "none on file"
-- Volunteered information counts as covered even if the assistant didn't ask for it
-- If a field was asked but the rep said "let me check" or "hold on" with no follow-up answer, it's MISSING
-- If the assistant asked about multiple items at once and the rep only answered SOME of them, the unanswered ones are MISSING
+- "covered" = the insurance rep EXPLICITLY provided an answer (including "no", "not covered", "N/A", "as needed", "none on file")
+- "missing" = the field was never discussed, or was asked but the rep didn't answer
+- Volunteered info counts as covered even if not explicitly asked
 
-## CRITICAL: These Are SEPARATE Fields — Do NOT Conflate Them
-Each of these is a DIFFERENT field. Answering one does NOT answer the other:
-- D7210 (surgical extraction) ≠ D7140 (simple extraction) — they are completely different codes
-- D4341 (SRP by quadrant) ≠ D4342 (SRP by sextant) — different codes, different frequencies
-- D4910 coverage % ≠ D4910 frequency — coverage is the percentage, frequency is how often
-- D4346 coverage % ≠ D4346 frequency — two separate pieces of information
-- Crown downgrade (yes/no) ≠ Crown replacement frequency (how often)
-- Fluoride covered (yes/no) ≠ Fluoride age limit ≠ Fluoride frequency — three separate fields
-- D0150 (comp exam) ≠ D0120 (periodic exam) ≠ D0140 (limited exam) — three different exam types
-- Each diagnostic code needs BOTH frequency AND history (last done date) — frequency alone doesn't count as covering history
+## CRITICAL: These Are SEPARATE Fields
+- D7210 (surgical extraction) ≠ D7140 (simple extraction)
+- D4341 (SRP quadrant) ≠ D4342 (SRP sextant)
+- Coverage % ≠ Frequency for the same code (e.g. D4910 coverage vs D4910 frequency)
+- Fluoride covered ≠ fluoride age limit ≠ fluoride frequency
+- Crown downgrade ≠ crown replacement frequency
+- D0150 ≠ D0120 ≠ D0140 — three different exam types
 
-## Transcript Quality Warning
-Phone call transcripts often have garbled text. Watch for:
-- "D" being transcribed as "Z", "G", or "d r" (e.g., "Z zero one forty" = D0140, "G4910" = D4910)
-- "Downgrade" being transcribed as "On grade" or "down grade"
-- "Fluoride" being transcribed as "Flora" or "floride"
-- Numbers being garbled (e.g., "a 100%" might be "a hundred percent")
-Interpret these charitably but ONLY mark a field as covered if you can clearly determine the answer.
+## Transcript Quality
+Transcripts may have garbled text: "Z" or "G" for "D", "On grade" for "Downgrade", "Flora" for "Fluoride". Interpret charitably but only mark covered if you can determine the answer.
 
-## Before Saying "VERIFICATION COMPLETE"
-You MUST mentally verify EACH of these specific items has been explicitly answered:
-1. Payor ID
-2. Deductible applies to (what services)
-3. D0120 periodic exam frequency AND history
-4. D0140 limited exam frequency
-5. Do exams share frequency with each other
-6. D1110 prophy frequency AND history
-7. D4346 coverage AND frequency AND shares with prophy
-8. Fluoride covered AND age limit AND frequency
-9. Downgrade fillings to amalgam (yes/no)
-10. Crown downgrade AND crown replacement frequency
-11. D7210 surgical extraction coverage AND D7140 simple extraction coverage (BOTH needed)
-12. D4910 coverage AND frequency
-13. D4341 frequency AND history AND D4342 frequency AND history (ALL FOUR needed)
-14. Implants covered (and if yes: D6010, D6057, D6058 coverage)
-15. Occlusal guard covered AND coverage %
-If ANY of these are not explicitly answered in the transcript, return them as questions. Do NOT say VERIFICATION COMPLETE.
+## Output Format (JSON)
+{
+  "fields": {
+    "payor_id": "covered" or "missing",
+    "coverage_preventive": "covered" or "missing",
+    "coverage_major": "covered" or "missing",
+    "coverage_extractions": "covered" or "missing",
+    "coverage_endodontics": "covered" or "missing",
+    "coverage_periodontics": "covered" or "missing",
+    "deductible_applies_to": "covered" or "missing",
+    "frequency_bwx": "covered" or "missing",
+    "history_bwx": "covered" or "missing",
+    "frequency_pano": "covered" or "missing",
+    "history_pano": "covered" or "missing",
+    "frequency_fmx": "covered" or "missing",
+    "history_fmx": "covered" or "missing",
+    "frequency_d0150": "covered" or "missing",
+    "history_d0150": "covered" or "missing",
+    "frequency_d0120": "covered" or "missing",
+    "history_d0120": "covered" or "missing",
+    "frequency_d0140": "covered" or "missing",
+    "exams_share_frequency": "covered" or "missing",
+    "frequency_d1110": "covered" or "missing",
+    "history_d1110": "covered" or "missing",
+    "coverage_d4346": "covered" or "missing",
+    "frequency_d4346": "covered" or "missing",
+    "d4346_shares_with_d1110": "covered" or "missing",
+    "fluoride_covered": "covered" or "missing",
+    "fluoride_age_limit": "covered" or "missing",
+    "fluoride_frequency": "covered" or "missing",
+    "downgrade_fillings": "covered" or "missing",
+    "downgrade_crowns": "covered" or "missing",
+    "frequency_crowns": "covered" or "missing",
+    "coverage_d7210": "covered" or "missing",
+    "coverage_d7140": "covered" or "missing",
+    "coverage_d4910": "covered" or "missing",
+    "frequency_d4910": "covered" or "missing",
+    "frequency_d4341": "covered" or "missing",
+    "history_d4341": "covered" or "missing",
+    "frequency_d4342": "covered" or "missing",
+    "history_d4342": "covered" or "missing",
+    "implants_covered": "covered" or "missing",
+    "coverage_d6010": "covered" or "missing (skip if implants not covered)",
+    "coverage_d6057": "covered" or "missing (skip if implants not covered)",
+    "coverage_d6058": "covered" or "missing (skip if implants not covered)",
+    "occlusal_guard_covered": "covered" or "missing",
+    "occlusal_guard_coverage": "covered" or "missing",
+    "limitations": "covered" or "missing",
+    "reference_number": "covered" or "missing",
+    "rep_name": "covered" or "missing"
+  }
+}
 
-## Output Format
-If there ARE missing fields:
-
-ASK THESE QUESTIONS NEXT (one at a time, wait for each answer):
-1. [specific question including CDT code pronunciation]
-2. [question]
-3. [question]
-4. [question]
-
-After getting answers, call getNextQuestions again.
-
-If ALL required fields are genuinely covered:
-
-VERIFICATION COMPLETE — all required fields have been covered. Ask for a reference number and the rep's name, then end the call.
-
-## CDT Code Pronunciations
-D0150 = "D zero one fifty", D0120 = "D zero one twenty", D0140 = "D zero one forty"
-D0210 = "D zero two ten", D0220 = "D zero two twenty", D0274 = "D zero two seventy-four", D0330 = "D zero three thirty"
-D1110 = "D eleven ten", D1208 = "D twelve oh eight"
-D4346 = "D forty-three forty-six", D4341 = "D forty-three forty-one", D4342 = "D forty-three forty-two"
-D4910 = "D forty-nine ten"
-D6010 = "D sixty ten", D6057 = "D sixty fifty-seven", D6058 = "D sixty fifty-eight"
-D7140 = "D seventy-one forty", D7210 = "D seventy-two ten"
-D9944 = "D ninety-nine forty-four"
-
-## Important
-- Return at most 5 questions at a time
-- Group related questions together
-- Start with the most critical missing fields first`,
+Mark D6010/D6057/D6058 as "covered" if the rep said implants are NOT covered (no need to ask sub-codes).`,
           },
           {
             role: "user",
-            content: `REQUIRED FIELDS:\n${REQUIRED_FIELDS_FOR_GAP_ANALYSIS}\n\nTRANSCRIPT:\n${transcript}`,
+            content: `TRANSCRIPT:\n${transcript}`,
           },
         ],
       }),
@@ -137,10 +195,44 @@ D9944 = "D ninety-nine forty-four"
     }
 
     const data = await response.json();
-    const result = data.choices?.[0]?.message?.content;
-    if (!result) return FALLBACK_QUESTIONS;
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return FALLBACK_QUESTIONS;
 
-    console.log("Gap analysis result:", result);
+    console.log("Gap analysis raw JSON:", content);
+
+    // Parse the JSON response
+    const analysis = JSON.parse(content);
+    const fields = analysis.fields || {};
+
+    // Collect missing fields
+    const missingKeys = Object.entries(fields)
+      .filter(([, status]) => status === "missing")
+      .map(([key]) => key);
+
+    console.log(`Gap analysis: ${missingKeys.length} missing fields:`, missingKeys);
+
+    if (missingKeys.length === 0) {
+      return "VERIFICATION COMPLETE — all required fields have been covered. Ask for a reference number and the rep's name, then thank them and end the call.";
+    }
+
+    // Generate questions for the next batch (up to 5)
+    const batch = missingKeys.slice(0, 5);
+    const remaining = missingKeys.length - batch.length;
+
+    const questions = batch
+      .map((key, i) => {
+        const question = FIELD_QUESTIONS[key] || `What is the ${key.replace(/_/g, " ")}?`;
+        return `${i + 1}. ${question}`;
+      })
+      .join("\n");
+
+    let result = `${missingKeys.length} fields still missing. ASK THESE QUESTIONS NEXT (one at a time, wait for each answer):\n${questions}`;
+    if (remaining > 0) {
+      result += `\n\n${remaining} more fields after these. After getting answers, call getNextQuestions again.`;
+    } else {
+      result += `\n\nAfter getting answers, call getNextQuestions one more time to confirm everything is covered.`;
+    }
+
     return result;
   } catch (error) {
     console.error("Gap analysis failed:", error);
