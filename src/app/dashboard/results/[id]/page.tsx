@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { isVerificationIncomplete, getDisplayStatus } from "@/lib/verification-status";
+import { getDisplayStatus } from "@/lib/verification-status";
 
 interface CodeDetail {
   frequency?: string;
@@ -886,7 +886,7 @@ export default function VerificationResultsDetail() {
 
       {/* Actions */}
       <div className="mt-6 flex gap-4">
-        {verification.status !== "in_progress" && isVerificationIncomplete(b ?? null) && (
+        {verification.status !== "in_progress" && (
           <button
             onClick={() => openEditModal("continue")}
             disabled={continuing}
