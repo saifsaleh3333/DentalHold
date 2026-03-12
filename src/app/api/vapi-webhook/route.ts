@@ -157,7 +157,7 @@ async function parseTranscriptWithAI(transcript: string): Promise<VapiStructured
         messages: [
           {
             role: "system",
-            content: `Extract dental insurance verification data from this phone call transcript. Return a JSON object with ONLY fields that were explicitly stated by the insurance representative. Do not infer or guess values. Only extract information that was clearly and explicitly stated. If unsure, use null. Use null for anything not discussed.\n\nSpecial rules:\n- If the rep says there is NO ortho benefit or no ortho coverage, set ortho_maximum to 0.\n- If the rep says implants are not covered, set implants_covered to false.\n\nFields:\n${fieldList}\n\nReturn valid JSON only.`,
+            content: `Extract dental insurance verification data from this phone call transcript. Return a JSON object with ONLY fields that were explicitly stated by the insurance representative. Use null for anything not discussed.\n\nSpecial rules:\n- If the rep says there is NO ortho benefit or no ortho coverage, set ortho_maximum to 0.\n- If the rep says implants are not covered, set implants_covered to false.\n\nFields:\n${fieldList}\n\nReturn valid JSON only.`,
           },
           {
             role: "user",
@@ -738,7 +738,6 @@ export async function POST(request: Request) {
       const toolCallList = payload.message?.toolCallList || [];
 
       // Extract transcript from the payload for gap analysis
-      // Vapi sends artifact.messages and/or call.transcript in tool-call webhooks
       let currentTranscript = payload.message.artifact?.transcript
         || payload.message.call?.transcript
         || "";
@@ -770,12 +769,10 @@ export async function POST(request: Request) {
       const results = await Promise.all(
         toolCallList.map(async (toolCall) => {
           if (toolCall.name === "getRemainingQuestions") {
-            // If we have a transcript, do intelligent gap analysis
             if (currentTranscript && currentTranscript.length > 100) {
               const gapResult = await analyzeTranscriptForGaps(currentTranscript);
               return { toolCallId: toolCall.id, result: gapResult };
             }
-            // Fallback to static checklist
             return { toolCallId: toolCall.id, result: REMAINING_QUESTIONS_CHECKLIST };
           }
           return { toolCallId: toolCall.id, result: "Unknown tool" };

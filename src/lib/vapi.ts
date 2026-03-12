@@ -439,11 +439,17 @@ export async function triggerVapiCall(
           onNumberSeconds: 1.5,
         },
         customEndpointingRules: [
+          // Hold message patterns — wait 30s before responding
+          {
+            type: "customer" as const,
+            regex: "(your call is important|please continue to hold|estimated wait time|press .* for callback|visit our website|thank you for your patience|representative will be with you|currently experiencing|higher than normal call volume)",
+            timeoutSeconds: 15,
+          },
           // After Dani asks a benefits question — wait longer for batch answers
           {
             type: "assistant" as const,
             regex: "(what('s| is) the (coverage|frequency|deductible|annual maximum|waiting period|fee schedule|claims|payor))",
-            timeoutSeconds: 5.0,
+            timeoutSeconds: 3.0,
           },
         ],
       },
@@ -490,7 +496,7 @@ export async function triggerVapiCall(
       ],
 
       analysisPlan: {
-        structuredDataPrompt: "You are analyzing a dental insurance verification phone call. Extract ONLY information that was EXPLICITLY stated by the insurance representative. Do not infer or guess values. Only extract information that was clearly and explicitly stated. If unsure, leave null. Leave fields null ONLY if the topic was never discussed. Special rules: if the rep says there is no ortho benefit, set ortho_maximum to 0. If the rep says implants are not covered, set implants_covered to false.",
+        structuredDataPrompt: "You are analyzing a dental insurance verification phone call. Extract ONLY information that was EXPLICITLY stated by the insurance representative. If a value was discussed but you're unsure of the exact value, include your best interpretation. Leave fields null ONLY if the topic was never discussed. Special rules: if the rep says there is no ortho benefit, set ortho_maximum to 0. If the rep says implants are not covered, set implants_covered to false.",
         structuredDataSchema: {
           type: "object" as const,
           properties: {
@@ -662,8 +668,9 @@ LISTEN to what the IVR says, then respond with ONE of these actions:
 - Insurance hold times can be 15-45 minutes. This is NORMAL. Do NOT hang up.
 - When you hear hold music or silence, wait patiently
 - If a representative comes back on the line, greet them
-- HOW TO BE SILENT: When you need to wait without speaking (hold music, rep looking something up), respond with just a period: "." — nothing else. This produces no audible speech. Do NOT write words like "Remain silent", "Silence", "Hold silently", "Waiting", or ANY phrase describing what you're doing. Just output a single period.
-- The hold system will play the SAME recorded message repeatedly (e.g., "visit our website", "your call is important to us", "press 1 for callback"). This is NORMAL hold behavior, NOT an IVR loop. Hearing the same message 5, 10, or even 20 times is expected. Respond with "." only.
+- PRODUCE ABSOLUTELY ZERO AUDIO OUTPUT while on hold. Do NOT speak at all. Do NOT say "hold", "waiting", "I'm here", "continue waiting", or ANY words whatsoever. Generate NO speech. Emit NOTHING.
+- Do NOT narrate what you are doing. Do NOT say "Continue waiting silently" or "Wait silently for a specialist" — those are actions to TAKE, not words to SAY. The correct action is to produce NO output at all.
+- The hold system will play the SAME recorded message repeatedly (e.g., "visit our website", "your call is important to us", "press 1 for callback"). This is NORMAL hold behavior, NOT an IVR loop. Hearing the same message 5, 10, or even 20 times is expected. Produce NO audio output.
 - If the hold system offers a callback (e.g., "press 1 and we'll call you back"), IGNORE it. Do not press anything. Stay on the line.
 
 Be concise and natural. Only provide information when asked. Ask ONE question at a time and wait for answers.
@@ -765,7 +772,7 @@ Do NOT accept a faxback. Continue asking your verification questions over the ph
 VERIFICATION QUESTIONS:
 IMPORTANT: Do NOT start asking verification questions until the rep has confirmed they have the patient pulled up. Wait for a cue like "I have the patient", "What do you need?", "Go ahead", "What information are you looking for?", or similar. If the rep is still asking YOU for information (NPI, member ID, DOB, etc.), you are still in the AUTHENTICATION phase — do NOT start asking questions yet.
 
-Once the rep confirms they have the patient, ask these ONE AT A TIME. Wait for each answer before asking the next. If the rep volunteers information that answers some questions, acknowledge it and continue with the REMAINING unanswered questions in the SAME section before moving to the next section. Do NOT skip ahead.
+Once the rep confirms they have the patient, ask these ONE AT A TIME. Wait for each answer before asking the next.
 
 SECTION 1 - ELIGIBILITY & PLAN INFO:
 - Is the patient currently eligible?
@@ -934,7 +941,7 @@ NEVER repeat the same information more than twice. If the rep says it's wrong tw
 ## Critical
 - WAIT for the rep to respond before asking the next question
 - NEVER list multiple questions at once
-- If the rep gives multiple answers at once, LISTEN CAREFULLY and note ALL the information they provided. Acknowledge it ("Got it, thank you") and SKIP any questions that were already answered within that section. Do NOT re-ask for information the rep just volunteered.
+- If the rep gives multiple answers at once, LISTEN CAREFULLY and note ALL the information they provided. Acknowledge it ("Got it, thank you") and SKIP any questions that were already answered. Do NOT re-ask for information the rep just volunteered. For example, if you ask about the annual maximum and the rep also tells you the deductible and ortho maximum, do NOT ask about the deductible or ortho maximum — skip ahead to the next unanswered question.
 - CIRCLE-BACK CHECK: Before moving to the next SECTION, mentally review all questions in the current section. If you skipped a question that the rep's batch answer did NOT actually cover, go back and ask it. Example: if you asked about the annual maximum and the rep said "$1500 max, $50 deductible" — that answers annual maximum and deductible, but you still need "How much has been used?", "Has the deductible been met?", etc. Those are separate questions.
 - KEY DISTINCTION: "Volunteered" means the rep EXPLICITLY STATED the answer. The rep saying "the deductible is $50" does NOT answer "Has the deductible been met?" — still ask it.
 - If they say "anything else?" ask your next question
@@ -944,12 +951,11 @@ NEVER repeat the same information more than twice. If the rep says it's wrong tw
 - If the rep says "Can you repeat that?" or "What was that?", rephrase using simpler words and say the CDT code more slowly.
 
 ## When the Rep Says "One Second" or "Hold On"
-If the rep says things like "one second", "hold on", "let me look that up", "give me a moment", "one moment", "one moment please", or similar:
-- Respond with just a period: "." — this produces no audible speech.
-- Do NOT say "okay", "sure", "take your time", "of course", "no problem", or ANY filler words.
-- Do NOT say "Remain silent", "Silence", or any phrase describing what you're doing. Just output "."
+If the rep says things like "one second", "hold on", "let me look that up", "give me a moment", or similar:
+- Stay COMPLETELY SILENT. Do not say anything.
+- Do NOT say "okay", "hold", "waiting", "sure", or any filler words.
+- Just wait quietly until they speak again.
 - This is normal - they are typing or looking up information.
-- When they come back with information, RESPOND IMMEDIATELY. Do NOT stay silent after they give you data.
 
 ## Ending the Call Naturally
 When ending the call, keep it simple and professional:
