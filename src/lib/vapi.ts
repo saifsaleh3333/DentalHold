@@ -336,7 +336,7 @@ function buildContinuationSection(existingBenefits: Record<string, unknown>): st
     }
   }
 
-  lines.push("ONLY ask questions for information not listed above. Skip directly to the first section with missing data.");
+  lines.push("This data was collected in a prior call. When you call getNextQuestions, it will account for this data and only return questions for fields that are still missing. Do NOT re-ask anything listed above.");
   return lines.join("\n");
 }
 
@@ -385,8 +385,8 @@ export async function triggerVapiCall(
           {
             type: "function" as const,
             function: {
-              name: "getRemainingQuestions",
-              description: "Returns a checklist of all required verification questions. You MUST call this before ending the call to verify you haven't missed any sections.",
+              name: "getNextQuestions",
+              description: "Analyzes the conversation so far and returns the next 4-5 verification questions to ask. Call this after coverage percentages, then after each batch of answers. Returns VERIFICATION COMPLETE when all fields are covered.",
               parameters: {
                 type: "object" as const,
                 properties: {},
@@ -810,60 +810,35 @@ SECTION 5 - COVERAGE PERCENTAGES:
 - What's the coverage for periodontics?
 - What's the coverage for extractions?
 
-SECTION 6 - DIAGNOSTIC (X-RAYS & EXAMS):
-- What's the frequency for bitewings? That's D zero two twenty and D zero two seventy-four.
-- When were bitewings last done?
-- What's the frequency for panoramic x-ray? D zero three thirty.
-- When was the pano last done?
-- What's the frequency for full mouth x-rays? D zero two ten.
-- When was the FMX last done?
-- What's the frequency for a comprehensive exam? D zero one fifty.
-- When was the comprehensive exam last done?
-- What's the frequency for a periodic exam? D zero one twenty.
-- When was the periodic exam last done?
-- What's the frequency for a limited exam? D zero one forty.
-- Do the comprehensive, periodic, and limited exams share frequency with each other?
+## AFTER COVERAGE PERCENTAGES: Switch to Tool-Driven Flow
 
-SECTION 7 - PREVENTIVE:
-- What's the frequency for adult prophy? D eleven ten.
-- When was the last prophy?
-- What's the coverage and frequency for D forty-three forty-six?
-- Does D forty-three forty-six share frequency with prophy?
-- Is fluoride covered? D twelve oh eight. Any age limit? What's the frequency?
+After completing the coverage percentages above, you MUST call the getNextQuestions tool for all remaining questions. Do NOT continue asking questions from memory.
 
-SECTION 8 - BASIC:
-- Does the plan downgrade resin fillings to amalgam?
+REMAINING TOPICS the tool covers (Sections 6-14):
+- Diagnostic x-ray & exam frequencies/history (BWX, pano, FMX, D0150, D0120, D0140, exams share frequency)
+- Preventive (D1110 prophy frequency/history, D4346 coverage/frequency/shares with prophy, fluoride covered/age limit/frequency)
+- Basic (filling downgrades to amalgam)
+- Major (crown downgrades, crown replacement frequency)
+- Extractions (D7210 surgical, D7140 simple)
+- Periodontics (D4910 coverage/frequency, D4341 SRP frequency/history, D4342 frequency/history)
+- Implants (covered?, D6010/D6057/D6058 coverage)
+- Occlusal guard (covered?, coverage %)
+- Wrap-up (limitations/exclusions, reference number, rep name)
 
-SECTION 9 - MAJOR:
-- Does the plan downgrade crowns?
-- What's the frequency for crown replacement?
+HOW TO USE getNextQuestions:
+1. Call getNextQuestions — it analyzes everything discussed so far and returns 4-5 specific questions
+2. Ask those questions ONE AT A TIME, waiting for each answer
+3. After getting answers, call getNextQuestions again
+4. Repeat until the tool returns "VERIFICATION COMPLETE"
+5. Then ask for a reference number and rep name, thank them, and end the call
 
-SECTION 10 - EXTRACTIONS:
-- What's the coverage for surgical extraction? D seventy-two ten.
-- What's the coverage for simple extraction? D seventy-one forty.
-
-SECTION 11 - PERIODONTICS:
-- What's the coverage for perio maintenance? D forty-nine ten.
-- What's the frequency for D forty-nine ten?
-- What's the frequency for scaling and root planing? D forty-three forty-one.
-- When was D forty-three forty-one last done?
-- What's the frequency for D forty-three forty-two?
-- When was D forty-three forty-two last done?
-
-SECTION 12 - IMPLANTS:
-- Are implants covered?
-- If yes, what's the coverage for surgical placement, D sixty ten? The abutment, D sixty fifty-seven? And the implant crown, D sixty fifty-eight?
-
-SECTION 13 - OCCLUSAL GUARD:
-- Is occlusal guard covered? D ninety-nine forty-four.
-- What's the coverage percentage?
-
-SECTION 14 - WRAP UP:
-- Is there anything else I should know about limitations or exclusions?
-- Can I get a reference number for this call?
-- And your name?
-
-Then thank them and end the call.
+CRITICAL RULES:
+- Do NOT ask Section 6-14 questions from memory. ONLY ask what the tool returns.
+- The tool tracks EVERYTHING the rep has said, including info volunteered out of order. If the rep told you x-ray frequencies while discussing coverage percentages, the tool knows and will NOT re-ask.
+- If the rep says "What else do you need?" or "Anything else?", call getNextQuestions before answering.
+- Call the tool silently — do NOT say "Let me check" or "Hold on a sec."
+- If the tool says to ask something, ASK IT — even if you think it was already covered. The tool's analysis is authoritative.
+- IMPORTANT: When the rep gives a batch answer covering multiple items, acknowledge it ("Got it, thank you") and then call getNextQuestions. The tool will figure out what was covered and what's still missing. You do NOT need to track this yourself.
 
 ## How to Say CDT Codes
 ALWAYS say CDT codes as individual digits, not as one big number. Examples:
@@ -888,23 +863,6 @@ ALWAYS say CDT codes as individual digits, not as one big number. Examples:
 - D9944 = "D ninety-nine forty-four"
 NEVER say a code as one big number (do NOT say "D one hundred fifty" for D0150).
 
-## PRE-FLIGHT CHECK: Call getRemainingQuestions Before Ending
-You have a tool called "getRemainingQuestions". You MUST call it before wrapping up.
-
-WHEN TO CALL IT:
-- After you've asked your last planned question and received the answer
-- Before you ask for a reference number or say goodbye
-
-WHAT TO DO WITH THE RESULT:
-- The tool analyzes the conversation transcript and returns ONLY the specific questions you missed
-- If it returns a list of missing questions, you MUST go back and ask EVERY SINGLE ONE before wrapping up
-- Do NOT skip any items on the list — each one is a gap in the verification
-- Do NOT paraphrase or summarize — ask the exact questions listed
-- Only proceed to wrap-up (reference number, rep name, goodbye) when the tool says all fields are covered
-- Do NOT say "This'll just take a sec" or narrate calling the tool — just call it silently
-
-CRITICAL: Do NOT skip this step. Do NOT end the call without calling getRemainingQuestions first. If the tool returns missing items, you MUST ask them ALL.
-
 ## When to Hang Up (USE THE endCall TOOL)
 You have access to an "endCall" tool. You MUST use it to hang up the phone. Saying "goodbye" is NOT enough - you must call the endCall tool to actually disconnect.
 
@@ -914,7 +872,7 @@ USE THE endCall TOOL WHEN:
 - You have been on hold for more than 45 minutes with NO human ever picking up
 - The rep says "call back later", "our system is down", or "we can't help you right now"
 - You reach a voicemail box - hang up immediately, do NOT leave a message
-- You have completed all verification questions, called getRemainingQuestions to confirm, and gotten a reference number
+- getNextQuestions has returned "VERIFICATION COMPLETE" and you have gotten a reference number and rep name
 - The rep says goodbye or thanks you for calling
 - You cannot proceed because you're missing required information
 

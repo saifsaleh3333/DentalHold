@@ -1,24 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const REMAINING_QUESTIONS_CHECKLIST = `REMAINING QUESTIONS CHECKLIST — Review each item. If you have NOT asked about it, go back and ask now.
+const FALLBACK_QUESTIONS = `ASK THESE QUESTIONS NEXT (one at a time, wait for each answer):
+1. What's the frequency for bitewings and when were they last done?
+2. What's the frequency for panoramic x-ray and when was it last done?
+3. What's the frequency for full mouth x-rays and when was it last done?
+4. What's the frequency for comprehensive exam D zero one fifty, and when was it last done?
+5. What's the frequency for periodic exam D zero one twenty, and when was it last done?
 
-SECTION 1 - ELIGIBILITY: eligible?, effective date, in/out network, PPO/HMO/DMO, fee schedule, plan/group name, group number, claims address, payor ID
-SECTION 2 - BENEFITS: annual max, used/remaining, max applies to, deductible, ded. met, ded. applies to, ortho max/used
-SECTION 3 - WAITING PERIODS: preventive, basic, major
-SECTION 4 - CLAUSES: missing tooth clause
-SECTION 5 - COVERAGE %: diagnostic, preventive, basic, major, endodontics, periodontics, extractions
-SECTION 6 - DIAGNOSTIC: bwx freq/history, pano freq/history, fmx freq/history, D0150 freq/history, D0120 freq/history, D0140 freq, exams share frequency
-SECTION 7 - PREVENTIVE: D1110 freq/history, D4346 coverage/freq/shares, fluoride covered/age limit/frequency
-SECTION 8 - BASIC: filling downgrades
-SECTION 9 - MAJOR: crown downgrades, crown replacement freq
-SECTION 10 - EXTRACTIONS: D7210 coverage, D7140 coverage
-SECTION 11 - PERIODONTICS: D4910 coverage/freq, D4341 freq/history, D4342 freq/history
-SECTION 12 - IMPLANTS: covered?, D6010/D6057/D6058 coverage
-SECTION 13 - OCCLUSAL GUARD: covered?, coverage %
-SECTION 14 - WRAP UP: limitations/exclusions, reference number, rep name
-
-Do NOT end the call until every section above has been addressed.`;
+After getting answers, call getNextQuestions again.`;
 
 const REQUIRED_FIELDS_FOR_GAP_ANALYSIS = `Required dental verification fields (check each against the transcript):
 
@@ -39,7 +29,7 @@ WRAP UP: limitations/exclusions, call reference number, rep name`;
 
 async function analyzeTranscriptForGaps(transcript: string): Promise<string> {
   if (!process.env.OPENAI_API_KEY || !transcript) {
-    return REMAINING_QUESTIONS_CHECKLIST;
+    return FALLBACK_QUESTIONS;
   }
 
   try {
@@ -55,29 +45,51 @@ async function analyzeTranscriptForGaps(transcript: string): Promise<string> {
         messages: [
           {
             role: "system",
-            content: `You analyze dental insurance verification call transcripts to identify MISSING information.
+            content: `You analyze dental insurance verification call transcripts to determine what questions still need to be asked.
 
-Given a transcript and a list of required fields, identify which fields were NOT discussed or answered by the insurance rep.
+Given a transcript of an in-progress call and a list of required fields, determine which fields have been answered and which are still MISSING. Then return the NEXT 4-5 specific questions to ask.
 
 Rules:
-- Only mark a field as "covered" if the rep EXPLICITLY provided an answer for it.
-- If the rep said "none" or "no" for something (e.g., "no waiting periods"), that counts as covered.
-- If the rep said something is "not covered" (e.g., "implants are not covered"), that counts as covered — you know the answer.
-- If a field was never mentioned or asked about at all, it is MISSING.
-- If the assistant asked but the rep didn't answer or got cut off, it is MISSING.
-- Be precise — "coverage for basic is 80%" covers basic coverage %, but does NOT cover endodontics % unless endo was explicitly mentioned.
+- A field is "covered" if the insurance rep EXPLICITLY provided an answer — including "no", "not covered", "N/A", "as needed", "none on file"
+- Volunteered information counts as covered even if the assistant didn't ask for it
+- If a field was asked but the rep said "let me check" or "hold on" with no follow-up answer, it's MISSING
+- Be PRECISE about what counts as separate fields:
+  * "D4910 is covered at 80%" covers D4910 coverage but NOT D4910 frequency — those are different fields
+  * "coverage for basic is 80%" covers basic % but does NOT cover endodontics % unless endo was separately stated
+  * "D4341 frequency is once per 24 months" covers D4341 frequency but NOT D4342 frequency — they are different codes
+  * "crown downgrade to base metal" covers crown downgrade but NOT crown replacement frequency
+- If the transcript includes "PREVIOUSLY COLLECTED DATA" from a prior call, those fields are already covered
+- Eligibility, plan info, maximums, deductibles, waiting periods, coverage percentages are usually covered early — focus on what's missing from the detailed code-level questions
 
-Output format — return ONLY the missing items as a numbered list of specific questions to ask. Group by topic. If nothing is missing, say "ALL FIELDS COVERED — proceed to wrap up."
+Output format:
+If there ARE missing fields, return EXACTLY this format:
 
-Example output:
-STOP — you MISSED these questions. Go back and ask the rep NOW:
-1. What is the coverage percentage for endodontics?
-2. What is the frequency for D4346? Does it share frequency with prophy?
-3. What is the frequency for fluoride?
-4. What is the coverage for simple extraction D7140?
-5. What is the frequency for D4341 SRP? When was it last done?
-6. What is the frequency for D4342? When was it last done?
-7. What is the frequency for D4910 perio maintenance?`,
+ASK THESE QUESTIONS NEXT (one at a time, wait for each answer):
+1. [specific question including CDT code pronunciation]
+2. [question]
+3. [question]
+4. [question]
+
+After getting answers, call getNextQuestions again.
+
+If ALL required fields are covered, return EXACTLY:
+
+VERIFICATION COMPLETE — all required fields have been covered. Ask for a reference number and the rep's name, then end the call.
+
+CDT code pronunciations to use in questions:
+D0150 = "D zero one fifty", D0120 = "D zero one twenty", D0140 = "D zero one forty"
+D0210 = "D zero two ten", D0220 = "D zero two twenty", D0274 = "D zero two seventy-four", D0330 = "D zero three thirty"
+D1110 = "D eleven ten", D1208 = "D twelve oh eight"
+D4346 = "D forty-three forty-six", D4341 = "D forty-three forty-one", D4342 = "D forty-three forty-two"
+D4910 = "D forty-nine ten"
+D6010 = "D sixty ten", D6057 = "D sixty fifty-seven", D6058 = "D sixty fifty-eight"
+D7140 = "D seventy-one forty", D7210 = "D seventy-two ten"
+D9944 = "D ninety-nine forty-four"
+
+Important:
+- Return at most 5 questions at a time — the assistant will call this tool again after asking them
+- Group related questions together (e.g., all perio questions, all diagnostic frequencies)
+- Start with the most critical missing fields first`,
           },
           {
             role: "user",
@@ -89,18 +101,18 @@ STOP — you MISSED these questions. Go back and ask the rep NOW:
 
     if (!response.ok) {
       console.error("OpenAI gap analysis error:", response.status);
-      return REMAINING_QUESTIONS_CHECKLIST;
+      return FALLBACK_QUESTIONS;
     }
 
     const data = await response.json();
     const result = data.choices?.[0]?.message?.content;
-    if (!result) return REMAINING_QUESTIONS_CHECKLIST;
+    if (!result) return FALLBACK_QUESTIONS;
 
     console.log("Gap analysis result:", result);
     return result;
   } catch (error) {
     console.error("Gap analysis failed:", error);
-    return REMAINING_QUESTIONS_CHECKLIST;
+    return FALLBACK_QUESTIONS;
   }
 }
 
@@ -733,23 +745,47 @@ export async function POST(request: Request) {
       });
     }
 
-    // Handle tool-calls from Vapi (e.g. getRemainingQuestions)
+    // Handle tool-calls from Vapi (e.g. getNextQuestions)
     if (messageType === "tool-calls") {
       const toolCallList = payload.message?.toolCallList || [];
 
       // Extract transcript from the payload for gap analysis
-      let currentTranscript = payload.message.artifact?.transcript
-        || payload.message.call?.transcript
-        || "";
+      let currentTranscript = "";
+      let transcriptSource = "none";
 
-      // If no transcript in payload, try building from artifact messages
-      if (!currentTranscript && payload.message.artifact?.messages) {
-        currentTranscript = payload.message.artifact.messages
-          .map(m => `${m.role}: ${m.message}`)
-          .join("\n");
+      // Try 1: artifact.transcript
+      if (payload.message.artifact?.transcript) {
+        currentTranscript = payload.message.artifact.transcript;
+        transcriptSource = "artifact.transcript";
+      }
+      // Try 2: call.transcript
+      else if (payload.message.call?.transcript) {
+        currentTranscript = payload.message.call.transcript;
+        transcriptSource = "call.transcript";
       }
 
-      // If still no transcript, try fetching from Vapi API using call ID
+      // Try 3: Build from artifact messages (skip system message, it's the full prompt)
+      if (!currentTranscript && payload.message.artifact?.messages) {
+        const conversationMessages = payload.message.artifact.messages
+          .filter(m => m.role !== "system")
+          .map(m => `${m.role}: ${m.message}`);
+        if (conversationMessages.length > 0) {
+          currentTranscript = conversationMessages.join("\n");
+          transcriptSource = "artifact.messages";
+        }
+
+        // Also check for continuation data in system message
+        const systemMsg = payload.message.artifact.messages.find(m => m.role === "system");
+        if (systemMsg?.message?.includes("PREVIOUSLY COLLECTED DATA")) {
+          const match = systemMsg.message.match(/## PREVIOUSLY COLLECTED DATA[\s\S]+?(?=##|$)/);
+          if (match) {
+            currentTranscript = match[0] + "\n\n---\n\n" + currentTranscript;
+            transcriptSource += "+continuation";
+          }
+        }
+      }
+
+      // Try 4: Fetch from Vapi API using call ID
       if (!currentTranscript && payload.message.call?.id && process.env.VAPI_API_KEY) {
         try {
           const vapiRes = await fetch(`https://api.vapi.ai/call/${payload.message.call.id}`, {
@@ -760,20 +796,25 @@ export async function POST(request: Request) {
             currentTranscript = callData.artifact?.transcript
               || callData.transcript
               || "";
+            if (currentTranscript) transcriptSource = "vapi-api";
           }
         } catch (e) {
           console.error("Failed to fetch transcript from Vapi:", e);
         }
       }
 
+      console.log(`Tool-call transcript source: ${transcriptSource}, length: ${currentTranscript.length}`);
+
       const results = await Promise.all(
         toolCallList.map(async (toolCall) => {
-          if (toolCall.name === "getRemainingQuestions") {
+          if (toolCall.name === "getNextQuestions" || toolCall.name === "getRemainingQuestions") {
             if (currentTranscript && currentTranscript.length > 100) {
               const gapResult = await analyzeTranscriptForGaps(currentTranscript);
+              console.log(`getNextQuestions result (${transcriptSource}):`, gapResult.substring(0, 200));
               return { toolCallId: toolCall.id, result: gapResult };
             }
-            return { toolCallId: toolCall.id, result: REMAINING_QUESTIONS_CHECKLIST };
+            console.log("getNextQuestions: no transcript available, using fallback");
+            return { toolCallId: toolCall.id, result: FALLBACK_QUESTIONS };
           }
           return { toolCallId: toolCall.id, result: "Unknown tool" };
         })
