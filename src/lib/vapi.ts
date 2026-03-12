@@ -423,7 +423,7 @@ export async function triggerVapiCall(
       },
       server: {
         url: "https://dentalhold.com/api/vapi-webhook",
-        timeoutSeconds: 30,
+        timeoutSeconds: 60,
       },
 
       // Conservative endpointing for insurance calls — give reps time to finish
@@ -838,7 +838,7 @@ ASKING QUESTIONS ONE AT A TIME — THIS IS CRITICAL:
 - When you combine multiple questions, reps skip some of them and those fields get lost forever. Ask ONE question, get ONE answer, then ask the next.
 
 WHEN CALLING THE TOOL:
-- Say "Thank you" after the rep answers, then call the tool immediately — do NOT add filler like "Hold on a sec", "Give me a moment", "Let me check", or "This'll just take a sec." Just say "Thank you" and call it.
+- After the rep answers, say "Thank you, one moment please" and then call the tool. This tells the rep you need a brief pause so they wait patiently. Always use this exact phrase or something similar like "One moment while I check my notes." Do NOT call the tool in complete silence — the rep will think the call dropped.
 
 OTHER RULES:
 - Do NOT ask Section 6-14 questions from memory. ONLY ask what the tool returns.
