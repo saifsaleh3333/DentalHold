@@ -40,7 +40,7 @@ async function analyzeTranscriptForGaps(transcript: string): Promise<string> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         temperature: 0,
         messages: [
           {
@@ -49,20 +49,52 @@ async function analyzeTranscriptForGaps(transcript: string): Promise<string> {
 
 Given a transcript of an in-progress call and a list of required fields, determine which fields have been answered and which are still MISSING. Then return the NEXT 4-5 specific questions to ask.
 
-Rules:
-- A field is "covered" if the insurance rep EXPLICITLY provided an answer — including "no", "not covered", "N/A", "as needed", "none on file"
+## Rules
+- A field is "covered" ONLY if the insurance rep EXPLICITLY provided a clear answer — including "no", "not covered", "N/A", "as needed", "none on file"
 - Volunteered information counts as covered even if the assistant didn't ask for it
 - If a field was asked but the rep said "let me check" or "hold on" with no follow-up answer, it's MISSING
-- Be PRECISE about what counts as separate fields:
-  * "D4910 is covered at 80%" covers D4910 coverage but NOT D4910 frequency — those are different fields
-  * "coverage for basic is 80%" covers basic % but does NOT cover endodontics % unless endo was separately stated
-  * "D4341 frequency is once per 24 months" covers D4341 frequency but NOT D4342 frequency — they are different codes
-  * "crown downgrade to base metal" covers crown downgrade but NOT crown replacement frequency
-- If the transcript includes "PREVIOUSLY COLLECTED DATA" from a prior call, those fields are already covered
-- Eligibility, plan info, maximums, deductibles, waiting periods, coverage percentages are usually covered early — focus on what's missing from the detailed code-level questions
+- If the assistant asked about multiple items at once and the rep only answered SOME of them, the unanswered ones are MISSING
 
-Output format:
-If there ARE missing fields, return EXACTLY this format:
+## CRITICAL: These Are SEPARATE Fields — Do NOT Conflate Them
+Each of these is a DIFFERENT field. Answering one does NOT answer the other:
+- D7210 (surgical extraction) ≠ D7140 (simple extraction) — they are completely different codes
+- D4341 (SRP by quadrant) ≠ D4342 (SRP by sextant) — different codes, different frequencies
+- D4910 coverage % ≠ D4910 frequency — coverage is the percentage, frequency is how often
+- D4346 coverage % ≠ D4346 frequency — two separate pieces of information
+- Crown downgrade (yes/no) ≠ Crown replacement frequency (how often)
+- Fluoride covered (yes/no) ≠ Fluoride age limit ≠ Fluoride frequency — three separate fields
+- D0150 (comp exam) ≠ D0120 (periodic exam) ≠ D0140 (limited exam) — three different exam types
+- Each diagnostic code needs BOTH frequency AND history (last done date) — frequency alone doesn't count as covering history
+
+## Transcript Quality Warning
+Phone call transcripts often have garbled text. Watch for:
+- "D" being transcribed as "Z", "G", or "d r" (e.g., "Z zero one forty" = D0140, "G4910" = D4910)
+- "Downgrade" being transcribed as "On grade" or "down grade"
+- "Fluoride" being transcribed as "Flora" or "floride"
+- Numbers being garbled (e.g., "a 100%" might be "a hundred percent")
+Interpret these charitably but ONLY mark a field as covered if you can clearly determine the answer.
+
+## Before Saying "VERIFICATION COMPLETE"
+You MUST mentally verify EACH of these specific items has been explicitly answered:
+1. Payor ID
+2. Deductible applies to (what services)
+3. D0120 periodic exam frequency AND history
+4. D0140 limited exam frequency
+5. Do exams share frequency with each other
+6. D1110 prophy frequency AND history
+7. D4346 coverage AND frequency AND shares with prophy
+8. Fluoride covered AND age limit AND frequency
+9. Downgrade fillings to amalgam (yes/no)
+10. Crown downgrade AND crown replacement frequency
+11. D7210 surgical extraction coverage AND D7140 simple extraction coverage (BOTH needed)
+12. D4910 coverage AND frequency
+13. D4341 frequency AND history AND D4342 frequency AND history (ALL FOUR needed)
+14. Implants covered (and if yes: D6010, D6057, D6058 coverage)
+15. Occlusal guard covered AND coverage %
+If ANY of these are not explicitly answered in the transcript, return them as questions. Do NOT say VERIFICATION COMPLETE.
+
+## Output Format
+If there ARE missing fields:
 
 ASK THESE QUESTIONS NEXT (one at a time, wait for each answer):
 1. [specific question including CDT code pronunciation]
@@ -72,11 +104,11 @@ ASK THESE QUESTIONS NEXT (one at a time, wait for each answer):
 
 After getting answers, call getNextQuestions again.
 
-If ALL required fields are covered, return EXACTLY:
+If ALL required fields are genuinely covered:
 
 VERIFICATION COMPLETE — all required fields have been covered. Ask for a reference number and the rep's name, then end the call.
 
-CDT code pronunciations to use in questions:
+## CDT Code Pronunciations
 D0150 = "D zero one fifty", D0120 = "D zero one twenty", D0140 = "D zero one forty"
 D0210 = "D zero two ten", D0220 = "D zero two twenty", D0274 = "D zero two seventy-four", D0330 = "D zero three thirty"
 D1110 = "D eleven ten", D1208 = "D twelve oh eight"
@@ -86,9 +118,9 @@ D6010 = "D sixty ten", D6057 = "D sixty fifty-seven", D6058 = "D sixty fifty-eig
 D7140 = "D seventy-one forty", D7210 = "D seventy-two ten"
 D9944 = "D ninety-nine forty-four"
 
-Important:
-- Return at most 5 questions at a time — the assistant will call this tool again after asking them
-- Group related questions together (e.g., all perio questions, all diagnostic frequencies)
+## Important
+- Return at most 5 questions at a time
+- Group related questions together
 - Start with the most critical missing fields first`,
           },
           {
