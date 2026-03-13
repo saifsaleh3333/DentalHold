@@ -386,7 +386,7 @@ export async function triggerVapiCall(
             type: "function" as const,
             function: {
               name: "getNextQuestions",
-              description: "Analyzes the conversation so far and returns the next 4-5 verification questions to ask. Call this after coverage percentages, then after each batch of answers. Returns VERIFICATION COMPLETE when all fields are covered.",
+              description: "Analyzes the conversation so far and returns the next verification questions to ask. Call this as soon as the rep confirms they have the patient, then after each batch of answers. Returns VERIFICATION COMPLETE when all fields are covered.",
               parameters: {
                 type: "object" as const,
                 properties: {},
@@ -772,49 +772,16 @@ Do NOT accept a faxback. Continue asking your verification questions over the ph
 VERIFICATION QUESTIONS:
 IMPORTANT: Do NOT start asking verification questions until the rep has confirmed they have the patient pulled up. Wait for a cue like "I have the patient", "What do you need?", "Go ahead", "What information are you looking for?", or similar. If the rep is still asking YOU for information (NPI, member ID, DOB, etc.), you are still in the AUTHENTICATION phase — do NOT start asking questions yet.
 
-Once the rep confirms they have the patient, ask these ONE AT A TIME. Wait for each answer before asking the next.
+Once the rep confirms they have the patient, say "Thank you, one moment please" and call the getNextQuestions tool. It will tell you exactly what to ask. Do NOT ask any questions from memory — the tool handles ALL sections from start to finish.
 
-SECTION 1 - ELIGIBILITY & PLAN INFO:
-- Is the patient currently eligible?
-- What's the effective date?
-- Is our office in network or out of network?
-- Is this a PPO, HMO, or DMO plan?
-- What's the fee schedule?
-- What's the plan or group name?
-- What's the group number?
-- What's the claims mailing address and payor ID?
+## Tool-Driven Flow
 
-SECTION 2 - BENEFIT DETAILS:
-- What's the annual maximum?
-- How much has been used and how much remains?
-- Does the maximum apply to preventive, basic, major, or all?
-- What's the deductible?
-- How much of the deductible has been met?
-- Does the deductible apply to preventive, basic, or major?
-- Is there an ortho maximum? If so, what is it and how much has been used? If the rep says there is NO ortho benefit or no ortho coverage, record ortho_maximum as 0.
-
-SECTION 3 - WAITING PERIODS:
-- Are there any waiting periods for preventive?
-- Any waiting periods for basic?
-- Any waiting periods for major?
-
-SECTION 4 - CLAUSES:
-- Is there a missing tooth clause?
-
-SECTION 5 - COVERAGE PERCENTAGES:
-- What's the coverage percentage for diagnostic?
-- What's the coverage for preventive?
-- What's the coverage for basic?
-- What's the coverage for major?
-- What's the coverage for endodontics?
-- What's the coverage for periodontics?
-- What's the coverage for extractions?
-
-## AFTER COVERAGE PERCENTAGES: Switch to Tool-Driven Flow
-
-After completing the coverage percentages above, you MUST call the getNextQuestions tool for all remaining questions. Do NOT continue asking questions from memory.
-
-REMAINING TOPICS the tool covers (Sections 6-14):
+The getNextQuestions tool controls the ENTIRE verification. It covers:
+- Eligibility & plan info (eligible, effective date, network status, plan type, fee schedule, group info, claims address, payor ID)
+- Benefit details (annual max, used/remaining, deductible, ortho)
+- Waiting periods (preventive, basic, major)
+- Clauses (missing tooth)
+- Coverage percentages (diagnostic, preventive, basic, major, endodontics, periodontics, extractions)
 - Diagnostic x-ray & exam frequencies/history (BWX, pano, FMX, D0150, D0120, D0140, exams share frequency)
 - Preventive (D1110 prophy frequency/history, D4346 coverage/frequency/shares with prophy, fluoride covered/age limit/frequency)
 - Basic (filling downgrades to amalgam)
@@ -851,7 +818,7 @@ WHEN CALLING THE TOOL:
 - After the rep answers, say "Thank you, one moment please" and then call the tool. This tells the rep you need a brief pause. Do NOT call the tool in complete silence — the rep will think the call dropped.
 
 OTHER RULES:
-- Do NOT ask Section 6-14 questions from memory. ONLY ask what the tool returns.
+- Do NOT ask ANY verification questions from memory. ONLY ask what the tool returns.
 - The tool tracks EVERYTHING the rep has said, including info volunteered out of order.
 - If the rep says "What else do you need?" or "Anything else?", call getNextQuestions before answering.
 - If the tool says to ask something, ASK IT. The tool's analysis is authoritative.

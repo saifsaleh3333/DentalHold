@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const FALLBACK_QUESTIONS = `ASK THESE QUESTIONS NEXT (one at a time, wait for each answer):
-1. What's the frequency for bitewings and when were they last done?
-2. What's the frequency for panoramic x-ray and when was it last done?
-3. What's the frequency for full mouth x-rays and when was it last done?
-4. What's the frequency for comprehensive exam D zero one fifty, and when was it last done?
-5. What's the frequency for periodic exam D zero one twenty, and when was it last done?
+1. Is the patient currently eligible?
+2. What's the effective date?
+3. Is our office in network or out of network?
+4. What's the annual maximum?
+5. What's the deductible?
 
 After getting answers, call getNextQuestions again.`;
 
@@ -40,13 +40,39 @@ const CDT_PRONUNCIATIONS: Record<string, string> = {
 
 // Map of field keys to the question Dani should ask
 const FIELD_QUESTIONS: Record<string, string> = {
+  // Section 1 - Eligibility & Plan Info
+  eligible: "Is the patient currently eligible?",
+  effective_date: "What's the effective date?",
+  in_out_network: "Is our office in network or out of network?",
+  plan_type: "Is this a PPO, HMO, or DMO plan?",
+  fee_schedule: "What's the fee schedule?",
+  plan_group_name: "What's the plan or group name?",
+  group_number: "What's the group number?",
+  claims_address: "What's the claims mailing address?",
   payor_id: "What is the payor ID?",
+  // Section 2 - Benefit Details
+  annual_maximum: "What's the annual maximum?",
+  amount_used: "How much of the annual maximum has been used?",
+  amount_remaining: "How much of the annual maximum remains?",
+  maximum_applies_to: "Does the annual maximum apply to preventive, basic, major, or all?",
+  deductible: "What's the deductible?",
+  deductible_met: "How much of the deductible has been met?",
+  deductible_applies_to: "What does the deductible apply to — preventive, basic, or major?",
+  ortho_maximum: "Is there an ortho benefit? If so, what's the ortho maximum and how much has been used?",
+  // Section 3 - Waiting Periods
+  waiting_period_preventive: "Are there any waiting periods for preventive?",
+  waiting_period_basic: "Are there any waiting periods for basic?",
+  waiting_period_major: "Are there any waiting periods for major?",
+  // Section 4 - Clauses
+  missing_tooth_clause: "Is there a missing tooth clause?",
+  // Section 5 - Coverage Percentages
+  coverage_diagnostic: "What's the coverage percentage for diagnostic?",
   coverage_preventive: "What's the coverage percentage for preventive services?",
+  coverage_basic: "What's the coverage percentage for basic services?",
   coverage_major: "What's the coverage percentage for major services?",
   coverage_extractions: "What's the coverage percentage for extractions?",
   coverage_endodontics: "What's the coverage percentage for endodontics?",
   coverage_periodontics: "What's the coverage percentage for periodontics?",
-  deductible_applies_to: "What does the deductible apply to — preventive, basic, or major?",
   frequency_bwx: `What's the frequency for bitewing X-rays? ${CDT_PRONUNCIATIONS.D0220} and ${CDT_PRONUNCIATIONS.D0274}.`,
   history_bwx: "When were bitewings last done?",
   frequency_pano: `What's the frequency for panoramic X-ray? ${CDT_PRONUNCIATIONS.D0330}.`,
@@ -129,8 +155,30 @@ Transcripts may have garbled text: "Z" or "G" for "D", "On grade" for "Downgrade
 ## Output Format (JSON)
 {
   "fields": {
+    "eligible": "covered" or "missing",
+    "effective_date": "covered" or "missing",
+    "in_out_network": "covered" or "missing",
+    "plan_type": "covered" or "missing",
+    "fee_schedule": "covered" or "missing",
+    "plan_group_name": "covered" or "missing",
+    "group_number": "covered" or "missing",
+    "claims_address": "covered" or "missing",
     "payor_id": "covered" or "missing",
+    "annual_maximum": "covered" or "missing",
+    "amount_used": "covered" or "missing",
+    "amount_remaining": "covered" or "missing",
+    "maximum_applies_to": "covered" or "missing",
+    "deductible": "covered" or "missing",
+    "deductible_met": "covered" or "missing",
+    "deductible_applies_to": "covered" or "missing",
+    "ortho_maximum": "covered" or "missing",
+    "waiting_period_preventive": "covered" or "missing",
+    "waiting_period_basic": "covered" or "missing",
+    "waiting_period_major": "covered" or "missing",
+    "missing_tooth_clause": "covered" or "missing",
+    "coverage_diagnostic": "covered" or "missing",
     "coverage_preventive": "covered" or "missing",
+    "coverage_basic": "covered" or "missing",
     "coverage_major": "covered" or "missing",
     "coverage_extractions": "covered" or "missing",
     "coverage_endodontics": "covered" or "missing",
