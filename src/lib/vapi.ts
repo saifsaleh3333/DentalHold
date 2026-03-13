@@ -336,7 +336,7 @@ function buildContinuationSection(existingBenefits: Record<string, unknown>): st
     }
   }
 
-  lines.push("This data was collected in a prior call. When you call getNextQuestions, it will account for this data and only return questions for fields that are still missing. Do NOT re-ask anything listed above.");
+  lines.push("This data was collected in a prior call. SKIP any questions above that are already answered. When you call getNextQuestions after finishing all sections, it will also account for this data and only flag fields that are still missing.");
   return lines.join("\n");
 }
 
@@ -386,7 +386,7 @@ export async function triggerVapiCall(
             type: "function" as const,
             function: {
               name: "getNextQuestions",
-              description: "Analyzes the conversation so far and returns the next verification questions to ask. Call this as soon as the rep confirms they have the patient, then after each batch of answers. Returns VERIFICATION COMPLETE when all fields are covered.",
+              description: "Analyzes the full conversation and identifies any verification fields you missed. You MUST call this after finishing all 14 sections, before wrapping up. Returns specific questions for missed fields, or VERIFICATION COMPLETE if everything is covered.",
               parameters: {
                 type: "object" as const,
                 properties: {},
@@ -772,58 +772,112 @@ Do NOT accept a faxback. Continue asking your verification questions over the ph
 VERIFICATION QUESTIONS:
 IMPORTANT: Do NOT start asking verification questions until the rep has confirmed they have the patient pulled up. Wait for a cue like "I have the patient", "What do you need?", "Go ahead", "What information are you looking for?", or similar. If the rep is still asking YOU for information (NPI, member ID, DOB, etc.), you are still in the AUTHENTICATION phase — do NOT start asking questions yet.
 
-Once the rep confirms they have the patient, say "Thank you, one moment please" and call the getNextQuestions tool. It will tell you exactly what to ask. Do NOT ask any questions from memory — the tool handles ALL sections from start to finish.
+Once the rep confirms they have the patient, ask these ONE AT A TIME. Wait for each answer before asking the next.
 
-## Tool-Driven Flow
+SECTION 1 - ELIGIBILITY & PLAN INFO:
+- Is the patient currently eligible?
+- What's the effective date?
+- Is our office in network or out of network?
+- Is this a PPO, HMO, or DMO plan?
+- What's the fee schedule?
+- What's the plan or group name?
+- What's the group number?
+- What's the claims mailing address and payor ID?
 
-The getNextQuestions tool controls the ENTIRE verification. It covers:
-- Eligibility & plan info (eligible, effective date, network status, plan type, fee schedule, group info, claims address, payor ID)
-- Benefit details (annual max, used/remaining, deductible, ortho)
-- Waiting periods (preventive, basic, major)
-- Clauses (missing tooth)
-- Coverage percentages (diagnostic, preventive, basic, major, endodontics, periodontics, extractions)
-- Diagnostic x-ray & exam frequencies/history (BWX, pano, FMX, D0150, D0120, D0140, exams share frequency)
-- Preventive (D1110 prophy frequency/history, D4346 coverage/frequency/shares with prophy, fluoride covered/age limit/frequency)
-- Basic (filling downgrades to amalgam)
-- Major (crown downgrades, crown replacement frequency)
-- Extractions (D7210 surgical, D7140 simple)
-- Periodontics (D4910 coverage/frequency, D4341 SRP frequency/history, D4342 frequency/history)
-- Implants (covered?, D6010/D6057/D6058 coverage)
-- Occlusal guard (covered?, coverage %)
-- Wrap-up (limitations/exclusions, reference number, rep name)
+SECTION 2 - BENEFIT DETAILS:
+- What's the annual maximum?
+- How much has been used and how much remains?
+- Does the maximum apply to preventive, basic, major, or all?
+- What's the deductible?
+- How much of the deductible has been met?
+- Does the deductible apply to preventive, basic, or major?
+- Is there an ortho maximum? If so, what is it and how much has been used? If the rep says there is NO ortho benefit or no ortho coverage, record ortho_maximum as 0.
 
-HOW TO USE getNextQuestions:
-1. Call getNextQuestions — it analyzes everything discussed so far and returns specific questions
-2. Ask those questions strictly ONE AT A TIME. Ask ONE question, wait for the answer, then ask the NEXT one
-3. After getting answers to all questions from one tool call, call getNextQuestions again
-4. Repeat. The tool will tell you when verification is complete and give you the wrap-up questions (reference number, rep name)
-5. ONLY after the tool says "VERIFICATION COMPLETE" should you ask for the reference number and end the call
+SECTION 3 - WAITING PERIODS:
+- Are there any waiting periods for preventive?
+- Any waiting periods for basic?
+- Any waiting periods for major?
+
+SECTION 4 - CLAUSES:
+- Is there a missing tooth clause?
+
+SECTION 5 - COVERAGE PERCENTAGES:
+- What's the coverage percentage for diagnostic?
+- What's the coverage for preventive?
+- What's the coverage for basic?
+- What's the coverage for major?
+- What's the coverage for endodontics?
+- What's the coverage for periodontics?
+- What's the coverage for extractions?
+
+SECTION 6 - DIAGNOSTIC (X-RAYS & EXAMS):
+- What's the frequency for bitewings? That's D zero two twenty and D zero two seventy-four.
+- When were bitewings last done?
+- What's the frequency for panoramic x-ray? D zero three thirty.
+- When was the pano last done?
+- What's the frequency for full mouth x-rays? D zero two ten.
+- When was the FMX last done?
+- What's the frequency for a comprehensive exam? D zero one fifty.
+- When was the comprehensive exam last done?
+- What's the frequency for a periodic exam? D zero one twenty.
+- When was the periodic exam last done?
+- What's the frequency for a limited exam? D zero one forty.
+- Do the comprehensive, periodic, and limited exams share frequency with each other?
+
+SECTION 7 - PREVENTIVE:
+- What's the frequency for adult prophy? D eleven ten.
+- When was the last prophy?
+- What's the coverage and frequency for D forty-three forty-six?
+- Does D forty-three forty-six share frequency with prophy?
+- Is fluoride covered? D twelve oh eight. Any age limit? What's the frequency?
+
+SECTION 8 - BASIC:
+- Does the plan downgrade resin fillings to amalgam?
+
+SECTION 9 - MAJOR:
+- Does the plan downgrade crowns?
+- What's the frequency for crown replacement?
+
+SECTION 10 - EXTRACTIONS:
+- What's the coverage for surgical extraction? D seventy-two ten.
+- What's the coverage for simple extraction? D seventy-one forty.
+
+SECTION 11 - PERIODONTICS:
+- What's the coverage for perio maintenance? D forty-nine ten.
+- What's the frequency for D forty-nine ten?
+- What's the frequency for scaling and root planing? D forty-three forty-one.
+- When was D forty-three forty-one last done?
+- What's the frequency for D forty-three forty-two?
+- When was D forty-three forty-two last done?
+
+SECTION 12 - IMPLANTS:
+- Are implants covered?
+- If yes, what's the coverage for surgical placement, D sixty ten? The abutment, D sixty fifty-seven? And the implant crown, D sixty fifty-eight?
+
+SECTION 13 - OCCLUSAL GUARD:
+- Is occlusal guard covered? D ninety-nine forty-four.
+- What's the coverage percentage?
+
+SECTION 14 - WRAP UP:
+- Is there anything else I should know about limitations or exclusions?
+
+After Section 14, do NOT ask for a reference number or wrap up yet. You MUST call getNextQuestions first.
+
+## MANDATORY GAP CHECK: Call getNextQuestions Before Wrapping Up
+
+After you finish asking all 14 sections, say "Thank you, one moment while I review my notes" and call getNextQuestions. This tool analyzes the ENTIRE conversation and catches any fields you missed or the rep skipped.
+
+WHAT TO DO WITH THE RESULT:
+- If it returns missing questions: ask EVERY SINGLE ONE, then call getNextQuestions again
+- Repeat until the tool returns "VERIFICATION COMPLETE"
+- ONLY after "VERIFICATION COMPLETE" should you ask for a reference number and rep name, then end the call
 
 ## ABSOLUTE RULE: You CANNOT Wrap Up Without the Tool's Permission
-Do NOT ask for a reference number, rep name, or say goodbye UNLESS the tool has returned "VERIFICATION COMPLETE." The tool controls when the call ends. If you have not seen "VERIFICATION COMPLETE" in a tool response, you are NOT done — call getNextQuestions again.
+Do NOT ask for a reference number, rep name, or say goodbye UNLESS the tool has returned "VERIFICATION COMPLETE." If you have not seen "VERIFICATION COMPLETE" in a tool response, you are NOT done — call getNextQuestions again.
 
-This means:
-- NEVER ask "Can I get a reference number?" on your own
-- NEVER ask "Is there anything else I should know?" on your own
-- NEVER say goodbye on your own
-- The tool will include these wrap-up questions when ALL fields are verified
-- If you think you're done, call the tool to confirm. If it returns more questions, ask them.
-
-ASKING QUESTIONS ONE AT A TIME:
-- BAD: "Could you provide the frequency for panoramic X-rays, as well as the exams for D zero one fifty, D zero one twenty, and D zero one forty?"
-- GOOD: "What's the frequency for panoramic X-rays?" [wait for answer] "And when was the pano last done?" [wait] "What's the frequency for D zero one fifty?" [wait]
-- When you combine multiple questions, reps skip some of them and those fields get lost forever.
-
-WHEN CALLING THE TOOL:
-- After the rep answers, say "Thank you, one moment please" and then call the tool. This tells the rep you need a brief pause. Do NOT call the tool in complete silence — the rep will think the call dropped.
-
-OTHER RULES:
-- Do NOT ask ANY verification questions from memory. ONLY ask what the tool returns.
-- The tool tracks EVERYTHING the rep has said, including info volunteered out of order.
-- If the rep says "What else do you need?" or "Anything else?", call getNextQuestions before answering.
-- If the tool says to ask something, ASK IT. The tool's analysis is authoritative.
-- When the rep gives a batch answer, acknowledge it ("Got it, thank you") and then call getNextQuestions.
-- If the rep skips one of your questions, ask it again specifically before moving on.
+WHEN ASKING GAP QUESTIONS:
+- Ask them ONE AT A TIME, just like the scripted sections
+- If the tool says to ask something, ASK IT — even if you think it was already covered. The tool's analysis is authoritative.
 
 ## How to Say CDT Codes
 ALWAYS say CDT codes as individual digits, not as one big number. Examples:
@@ -857,7 +911,7 @@ USE THE endCall TOOL WHEN:
 - You have been on hold for more than 45 minutes with NO human ever picking up
 - The rep says "call back later", "our system is down", or "we can't help you right now"
 - You reach a voicemail box - hang up immediately, do NOT leave a message
-- getNextQuestions has returned "VERIFICATION COMPLETE" and you have asked for and received a reference number and rep name (the tool will tell you when to do this)
+- getNextQuestions has returned "VERIFICATION COMPLETE" and you have asked for and received a reference number and rep name
 - The rep says goodbye or thanks you for calling
 - You cannot proceed because you're missing required information
 
