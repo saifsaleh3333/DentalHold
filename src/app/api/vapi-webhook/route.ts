@@ -467,8 +467,13 @@ interface VapiWebhookPayload {
     type: string;
     toolCallList?: Array<{
       id: string;
-      name: string;
+      type?: string;
+      name?: string;
       arguments?: Record<string, unknown>;
+      function?: {
+        name: string;
+        arguments?: Record<string, unknown>;
+      };
     }>;
     call?: {
       id: string;
@@ -931,16 +936,20 @@ export async function POST(request: Request) {
 
       const results = await Promise.all(
         toolCallList.map(async (toolCall) => {
-          if (toolCall.name === "getNextQuestions" || toolCall.name === "getRemainingQuestions") {
+          // Vapi sends tool name in function.name (nested) — also check top-level name for backwards compat
+          const toolName = toolCall.function?.name || toolCall.name;
+          console.log(`Processing tool call: id=${toolCall.id}, name=${toolName}, raw keys=${Object.keys(toolCall).join(",")}`);
+
+          if (toolName === "getNextQuestions" || toolName === "getRemainingQuestions") {
             if (currentTranscript && currentTranscript.length > 100) {
               const gapResult = await analyzeTranscriptForGaps(currentTranscript);
               console.log(`getNextQuestions result (${transcriptSource}):`, gapResult.substring(0, 200));
-              return { toolCallId: toolCall.id, result: gapResult };
+              return { name: toolName, toolCallId: toolCall.id, result: gapResult };
             }
             console.log("getNextQuestions: no transcript available, using fallback");
-            return { toolCallId: toolCall.id, result: FALLBACK_QUESTIONS };
+            return { name: toolName, toolCallId: toolCall.id, result: FALLBACK_QUESTIONS };
           }
-          return { toolCallId: toolCall.id, result: "Unknown tool" };
+          return { name: toolName || "unknown", toolCallId: toolCall.id, result: "Unknown tool" };
         })
       );
 
