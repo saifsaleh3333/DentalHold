@@ -402,8 +402,8 @@ export async function triggerVapiCall(
         provider: "11labs" as const,
         model: "eleven_turbo_v2_5" as const,
         voiceId: "LLEUnU5vlkaEV6dSdkOl",
-        stability: 0.5,
-        similarityBoost: 0.75,
+        stability: 0.6,
+        similarityBoost: 0.6,
       },
       transcriber: {
         provider: "deepgram" as const,
