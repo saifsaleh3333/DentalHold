@@ -203,21 +203,21 @@ function CodeRow({ code, label, detail }: { code: string; label: string; detail?
     <div className="border-t border-slate-100 pt-2 mt-2 space-y-1">
       <p className="text-xs font-semibold text-slate-600">{code} <span className="font-normal text-slate-400">({label})</span></p>
       {detail?.coverage != null && (
-        <div className="flex justify-between text-sm">
-          <span className="text-slate-500">Coverage</span>
-          <span className="font-medium">{detail.coverage}%</span>
+        <div className="flex justify-between gap-2 text-sm">
+          <span className="text-slate-500 shrink-0">Coverage</span>
+          <span className="font-medium text-right">{detail.coverage}%</span>
         </div>
       )}
       {detail?.frequency && (
-        <div className="flex justify-between text-sm">
-          <span className="text-slate-500">Frequency</span>
-          <span className="font-medium">{detail.frequency}</span>
+        <div className="flex justify-between gap-2 text-sm">
+          <span className="text-slate-500 shrink-0">Frequency</span>
+          <span className="font-medium text-right">{detail.frequency}</span>
         </div>
       )}
       {detail?.history && (
-        <div className="flex justify-between text-sm">
-          <span className="text-slate-500">Last Done</span>
-          <span className="font-medium">{detail.history}</span>
+        <div className="flex justify-between gap-2 text-sm">
+          <span className="text-slate-500 shrink-0">Last Done</span>
+          <span className="font-medium text-right">{detail.history}</span>
         </div>
       )}
     </div>
@@ -557,7 +557,7 @@ export default function VerificationResultsDetail() {
             <p className="font-medium text-slate-900 text-sm whitespace-pre-line">
               {b?.claimsMailingAddress || b?.payorId || "—"}
               {b?.claimsMailingAddress && b?.payorId && (
-                <span className="text-slate-500"> | Payor ID: {b.payorId}</span>
+                <span className="text-slate-500 shrink-0"> | Payor ID: {b.payorId}</span>
               )}
             </p>
           </div>
@@ -638,8 +638,8 @@ export default function VerificationResultsDetail() {
 
             {diag.examsShareFrequency != null && (
               <div className="border-t border-slate-100 pt-2 mt-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Exams share freq?</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">Exams share freq?</span>
                   <span className="font-medium">{diag.examsShareFrequency ? "Yes" : "No"}</span>
                 </div>
               </div>
@@ -656,38 +656,38 @@ export default function VerificationResultsDetail() {
             <div className="border-t border-slate-100 pt-2 mt-2 space-y-1">
               <p className="text-xs font-semibold text-slate-600">D4346 <span className="font-normal text-slate-400">(Gingivitis Scaling)</span></p>
               {prev.d4346.coverage != null && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Coverage</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">Coverage</span>
                   <span className="font-medium">{prev.d4346.coverage}%</span>
                 </div>
               )}
               {prev.d4346.frequency && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Frequency</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">Frequency</span>
                   <span className="font-medium">{prev.d4346.frequency}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Shares w/ D1110?</span>
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-slate-500 shrink-0">Shares w/ D1110?</span>
                 <span className="font-medium">{prev.d4346.sharesWithD1110 != null ? (prev.d4346.sharesWithD1110 ? "Yes" : "No") : "—"}</span>
               </div>
             </div>
 
             <div className="border-t border-slate-100 pt-2 mt-2 space-y-1">
               <p className="text-xs font-semibold text-slate-600">D1208 <span className="font-normal text-slate-400">(Fluoride)</span></p>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Covered</span>
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-slate-500 shrink-0">Covered</span>
                 <span className="font-medium">{prev.fluoride.covered != null ? (prev.fluoride.covered ? "Yes" : "No") : "—"}</span>
               </div>
               {prev.fluoride.ageLimit && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Age Limit</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">Age Limit</span>
                   <span className="font-medium">{prev.fluoride.ageLimit}</span>
                 </div>
               )}
               {prev.fluoride.frequency && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Frequency</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">Frequency</span>
                   <span className="font-medium">{prev.fluoride.frequency}</span>
                 </div>
               )}
@@ -698,8 +698,8 @@ export default function VerificationResultsDetail() {
           <div className="p-4">
             <p className="text-sm font-semibold text-slate-700">Basic</p>
             <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.basic != null ? `${b.coverage.basic}%` : "—"}</p>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Downgrade fillings?</span>
+            <div className="flex justify-between gap-2 text-sm">
+              <span className="text-slate-500 shrink-0">Downgrade fillings?</span>
               <span className="font-medium">{b?.downgradeFillings != null ? (b.downgradeFillings ? "Yes" : "No") : "—"}</span>
             </div>
 
@@ -716,13 +716,13 @@ export default function VerificationResultsDetail() {
           <div className="border-r border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-700">Major</p>
             <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.major != null ? `${b.coverage.major}%` : "—"}</p>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Downgrade crowns?</span>
+            <div className="flex justify-between gap-2 text-sm">
+              <span className="text-slate-500 shrink-0">Downgrade crowns?</span>
               <span className="font-medium">{b?.downgradeCrowns != null ? (b.downgradeCrowns ? "Yes" : "No") : "—"}</span>
             </div>
             {(b?.major?.crowns?.frequency || b?.frequencies?.crowns) && (
-              <div className="flex justify-between text-sm mt-1">
-                <span className="text-slate-500">Crown frequency</span>
+              <div className="flex justify-between gap-2 text-sm mt-1">
+                <span className="text-slate-500 shrink-0">Crown frequency</span>
                 <span className="font-medium">{b?.major?.crowns?.frequency || b?.frequencies?.crowns}</span>
               </div>
             )}
@@ -734,12 +734,12 @@ export default function VerificationResultsDetail() {
             <p className="text-2xl font-bold text-slate-900 mb-2">{b?.coverage?.extractions != null ? `${b.coverage.extractions}%` : "—"}</p>
 
             <div className="space-y-1 border-t border-slate-100 pt-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">D7210 (Surgical)</span>
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-slate-500 shrink-0">D7210 (Surgical)</span>
                 <span className="font-medium">{extract.d7210.coverage != null ? `${extract.d7210.coverage}%` : "—"}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">D7140 (Simple)</span>
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-slate-500 shrink-0">D7140 (Simple)</span>
                 <span className="font-medium">{extract.d7140.coverage != null ? `${extract.d7140.coverage}%` : "—"}</span>
               </div>
             </div>
@@ -772,16 +772,16 @@ export default function VerificationResultsDetail() {
             </div>
             {b?.implants?.covered && (
               <div className="space-y-1 border-t border-slate-100 pt-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">D6010 (Implant Body)</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">D6010 (Implant Body)</span>
                   <span className="font-medium">{b.implants.d6010?.coverage != null ? `${b.implants.d6010.coverage}%` : "—"}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">D6057 (Abutment)</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">D6057 (Abutment)</span>
                   <span className="font-medium">{b.implants.d6057?.coverage != null ? `${b.implants.d6057.coverage}%` : "—"}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">D6058 (Crown)</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">D6058 (Crown)</span>
                   <span className="font-medium">{b.implants.d6058?.coverage != null ? `${b.implants.d6058.coverage}%` : "—"}</span>
                 </div>
               </div>
@@ -802,8 +802,8 @@ export default function VerificationResultsDetail() {
             </div>
             {b?.occlusialGuard?.coverage != null && (
               <div className="border-t border-slate-100 pt-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Coverage</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">Coverage</span>
                   <span className="font-medium">{b.occlusialGuard.coverage}%</span>
                 </div>
               </div>
@@ -815,14 +815,14 @@ export default function VerificationResultsDetail() {
             <p className="text-sm font-semibold text-slate-700 mb-2">Call Reference</p>
             <div className="space-y-1">
               {verification.referenceNumber && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Ref #</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">Ref #</span>
                   <span className="font-mono font-medium">{verification.referenceNumber}</span>
                 </div>
               )}
               {verification.callDuration && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Duration</span>
+                <div className="flex justify-between gap-2 text-sm">
+                  <span className="text-slate-500 shrink-0">Duration</span>
                   <span className="font-medium">{verification.callDuration}</span>
                 </div>
               )}
